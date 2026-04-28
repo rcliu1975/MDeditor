@@ -165,7 +165,7 @@
     <div id="file-list"></div>
     <div class="sidebar-footer">
       <button class="sb-btn primary" id="new-btn">＋ 新建文件</button>
-      <button class="sb-btn" onclick="document.getElementById('file-input').click()">📂 開啟 .md 檔</button>
+      <button class="sb-btn" id="open-btn">📂 開啟 .md 檔</button>
       <button class="sb-btn" id="save-btn">💾 另存為 .md</button>
       <input type="file" id="file-input" accept=".md,.markdown,.txt" multiple hidden />
     </div>
@@ -234,7 +234,7 @@ renderer.code = (code, lang) => {
   let hl;
   try { hl = hljs.highlight(code, { language, ignoreIllegals:true }).value; }
   catch { hl = hljs.highlightAuto(code).value; }
-  return `<div class="code-block"><div class="code-header"><span class="code-lang">${language}</span><button class="copy-btn" onclick="copyCode(this)">⎘ 複製</button></div><pre><code class="hljs language-${language}">${hl}</code></pre></div>`;
+  return `<div class="code-block"><div class="code-header"><span class="code-lang">${language}</span><button class="copy-btn" type="button">⎘ 複製</button></div><pre><code class="hljs language-${language}">${hl}</code></pre></div>`;
 };
 marked.use({ renderer });
 
@@ -251,6 +251,7 @@ const docTitleEl = document.getElementById('doc-title');
 const wcEl       = document.getElementById('word-count');
 const udot       = document.getElementById('unsaved-dot');
 const workspace  = document.getElementById('workspace');
+const fileInputEl = document.getElementById('file-input');
 
 // ── Sidebar ──────────────────────────────────────────
 document.getElementById('sidebar-toggle').addEventListener('click', () => {
@@ -337,8 +338,9 @@ function deleteFile(id) {
 
 // ── New / Open / Save ─────────────────────────────────
 document.getElementById('new-btn').addEventListener('click', () => newFile());
+document.getElementById('open-btn').addEventListener('click', () => fileInputEl.click());
 
-document.getElementById('file-input').addEventListener('change', e => {
+fileInputEl.addEventListener('change', e => {
   Array.from(e.target.files).forEach(file => {
     const r = new FileReader();
     r.onload = ev => newFile(file.name, ev.target.result);
@@ -412,7 +414,7 @@ function renderPreview() {
     return;
   }
   previewEl.className = 'md';
-  previewEl.innerHTML = marked.parse(md);
+  previewEl.innerHTML = sanitizeHtml(marked.parse(md));
 }
 
 function updateWC() {
@@ -444,6 +446,59 @@ function insertAt(text) {
 }
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+function sanitizeHtml(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const allowedTags = new Set([
+    'a', 'blockquote', 'br', 'button', 'code', 'del', 'div', 'em', 'h1', 'h2', 'h3',
+    'h4', 'h5', 'h6', 'hr', 'img', 'input', 'li', 'ol', 'p', 'pre', 'span', 'strong',
+    'table', 'tbody', 'td', 'thead', 'th', 'tr', 'ul'
+  ]);
+  const globalAttrs = new Set(['class', 'title', 'aria-label']);
+  const allowedAttrs = {
+    a: new Set(['href', 'target', 'rel']),
+    button: new Set(['type']),
+    code: new Set(['class']),
+    img: new Set(['src', 'alt']),
+    input: new Set(['type', 'checked', 'disabled'])
+  };
+  const safeUrl = value => /^(https?:|mailto:|tel:|data:image\/)/i.test(value) || /^(\/|\.\/|\.\.\/|#)/.test(value);
+
+  doc.body.querySelectorAll('*').forEach(node => {
+    const tag = node.tagName.toLowerCase();
+    if (!allowedTags.has(tag)) {
+      node.replaceWith(...node.childNodes);
+      return;
+    }
+
+    [...node.attributes].forEach(attr => {
+      const name = attr.name.toLowerCase();
+      const value = attr.value.trim();
+      const tagAttrs = allowedAttrs[tag] || new Set();
+      const allowed = globalAttrs.has(name) || tagAttrs.has(name);
+      const isEvent = name.startsWith('on');
+      if (isEvent || !allowed) {
+        node.removeAttribute(attr.name);
+        return;
+      }
+      if ((name === 'href' || name === 'src') && !safeUrl(value)) {
+        node.removeAttribute(attr.name);
+      }
+    });
+
+    if (tag === 'a' && node.hasAttribute('href')) {
+      node.setAttribute('target', '_blank');
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
+    if (tag === 'input') {
+      if (node.getAttribute('type') !== 'checkbox') node.remove();
+      else node.setAttribute('disabled', '');
+    }
+  });
+
+  return doc.body.innerHTML;
+}
+
 // ── Copy code ─────────────────────────────────────────
 function copyCode(btn) {
   const code = btn.closest('.code-block').querySelector('code').innerText;
@@ -452,6 +507,10 @@ function copyCode(btn) {
     setTimeout(() => { btn.innerHTML = '⎘ 複製'; btn.classList.remove('copied'); }, 2000);
   });
 }
+previewEl.addEventListener('click', e => {
+  const btn = e.target.closest('.copy-btn');
+  if (btn) copyCode(btn);
+});
 
 // ── Print ─────────────────────────────────────────────
 document.getElementById('print-btn').addEventListener('click', () => window.print());
