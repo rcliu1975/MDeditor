@@ -1,4 +1,4 @@
-const CACHE = 'md-viewer-v1';
+const CACHE = 'md-editor-v2';
 const PRECACHE = [
   './',
   './index.html',
@@ -24,6 +24,7 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
