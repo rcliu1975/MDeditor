@@ -297,5 +297,20 @@ index.html 載入
 
 如果確定只使用支援動態 manifest 的瀏覽器，也可以把 `manifest.json` 視為備用檔；但保留它比較安全。
 
+---
+
+## 安全限制
+
+目前專案已加上基本安全硬化：
+
+- Markdown 預覽輸出的 HTML 會先經過簡化 sanitization，避免直接注入任意標籤、事件屬性與危險連結。
+- 頁面已設定 `Content-Security-Policy`，限制 script、style、font、image 與 worker 的來源。
+- 預覽中的外部連結會自動加上 `target="_blank"` 與 `rel="noopener noreferrer"`。
+
+目前仍有幾個刻意保留的限制與取捨：
+
+- 這不是完整的 HTML 白名單 sanitizer；若未來要支援更複雜的內嵌 HTML，建議改用成熟函式庫，例如 `DOMPurify`。
+- 預覽允許 `data:image/...`，是為了保留常見 Markdown 內嵌圖片用法；如果部署情境更嚴格，可以再收緊。
+- Service Worker 目前主要服務靜態資源離線快取，不處理更進階的版本控管、內容驗證或資料同步。
 
 
