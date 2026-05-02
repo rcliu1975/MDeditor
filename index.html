@@ -1,163 +1,198 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#212121" />
-  <meta name="description" content="Markdown Editor — ChatGPT-style live preview" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self'; manifest-src 'self' blob:; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none';" />
-  <title>MD Editor</title>
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" id="apple-icon" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#212121" />
+<meta name="description" content="Markdown Editor — ChatGPT-style live preview" />
+<!-- CSP 放寬 cdn.jsdelivr.net script (MathJax) -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self'; manifest-src 'self' blob:; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none';" />
+<title>MD Editor</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" id="apple-icon" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<!-- MathJax 3：先設定，再載入 -->
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath:  [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true,
+    tags: 'ams'
+  },
+  svg: { fontCache: 'global' },
+  options: {
+    skipHtmlTags: ['script','noscript','style','textarea','pre','code'],
+    // 允許在 sanitize 後的 DOM 中執行
+    processHtmlClass: 'md'
+  },
+  startup: { typeset: false }   // 不自動排版；由我們手動呼叫
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg:#212121; --surface:#2f2f2f; --surface2:#3a3a3a; --border:#444;
-      --text:#ececec; --text-muted:#a0a0a0; --accent:#10a37f; --accent2:#19c37d;
-      --font-body:'Sora',sans-serif; --font-code:'JetBrains Mono',monospace;
-      --sidebar-w:240px; --header-h:48px; --toolbar-h:38px;
-    }
-    html,body { height:100%; font-family:var(--font-body); background:var(--bg); color:var(--text); overflow:hidden; }
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#212121; --surface:#2f2f2f; --surface2:#3a3a3a; --border:#444;
+  --text:#ececec; --text-muted:#a0a0a0; --accent:#10a37f; --accent2:#19c37d;
+  --font-body:'Sora',sans-serif; --font-code:'JetBrains Mono',monospace;
+  --sidebar-w:240px; --header-h:48px; --toolbar-h:38px;
+}
+html,body { height:100%; font-family:var(--font-body); background:var(--bg); color:var(--text); overflow:hidden; }
 
-    /* App */
-    #app { display:flex; height:100vh; }
+/* App */
+#app { display:flex; height:100vh; }
 
-    /* Sidebar */
-    #sidebar { width:var(--sidebar-w); background:#181818; border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; transition:width .22s ease; overflow:hidden; z-index:100; }
-    #sidebar.collapsed { width:0; }
-    .sidebar-header { height:var(--header-h); padding:0 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:9px; flex-shrink:0; }
-    .logo { width:26px; height:26px; background:var(--accent); border-radius:6px; display:grid; place-items:center; font-size:13px; font-weight:700; color:#fff; flex-shrink:0; }
-    .sidebar-title { font-size:13px; font-weight:600; white-space:nowrap; }
-    #file-list { flex:1; overflow-y:auto; padding:6px; }
-    #file-list::-webkit-scrollbar { width:3px; }
-    #file-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
-    .file-item { padding:7px 10px; border-radius:6px; cursor:pointer; font-size:12.5px; color:var(--text-muted); display:flex; align-items:center; gap:7px; transition:background .13s,color .13s; white-space:nowrap; overflow:hidden; }
-    .file-item .fname { overflow:hidden; text-overflow:ellipsis; flex:1; }
-    .file-item:hover { background:var(--surface); color:var(--text); }
-    .file-item.active { background:var(--surface2); color:var(--text); }
-    .file-item .del-btn { opacity:0; font-size:14px; color:var(--text-muted); background:none; border:none; cursor:pointer; padding:0 2px; transition:opacity .13s,color .13s; flex-shrink:0; }
-    .file-item:hover .del-btn { opacity:1; }
-    .file-item .del-btn:hover { color:#e06c75; }
-    .sidebar-footer { padding:10px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px; }
-    .sb-btn { width:100%; padding:7px 10px; background:var(--surface); border:1px solid var(--border); border-radius:6px; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-body); display:flex; align-items:center; justify-content:center; gap:6px; transition:all .13s; white-space:nowrap; }
-    .sb-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(16,163,127,.07); }
-    .sb-btn.primary { background:rgba(16,163,127,.12); border-color:rgba(16,163,127,.35); color:var(--accent2); }
-    .sb-btn.primary:hover { background:rgba(16,163,127,.22); }
+/* Sidebar */
+#sidebar { width:var(--sidebar-w); background:#181818; border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; transition:width .22s ease; overflow:hidden; z-index:100; }
+#sidebar.collapsed { width:0; }
+.sidebar-header { height:var(--header-h); padding:0 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:9px; flex-shrink:0; }
+.logo { width:26px; height:26px; background:var(--accent); border-radius:6px; display:grid; place-items:center; font-size:13px; font-weight:700; color:#fff; flex-shrink:0; }
+.sidebar-title { font-size:13px; font-weight:600; white-space:nowrap; }
+#file-list { flex:1; overflow-y:auto; padding:6px; }
+#file-list::-webkit-scrollbar { width:3px; }
+#file-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+.file-item { padding:7px 10px; border-radius:6px; cursor:pointer; font-size:12.5px; color:var(--text-muted); display:flex; align-items:center; gap:7px; transition:background .13s,color .13s; white-space:nowrap; overflow:hidden; }
+.file-item .fname { overflow:hidden; text-overflow:ellipsis; flex:1; }
+.file-item:hover { background:var(--surface); color:var(--text); }
+.file-item.active { background:var(--surface2); color:var(--text); }
+.file-item .del-btn { opacity:0; font-size:14px; color:var(--text-muted); background:none; border:none; cursor:pointer; padding:0 2px; transition:opacity .13s,color .13s; flex-shrink:0; }
+.file-item:hover .del-btn { opacity:1; }
+.file-item .del-btn:hover { color:#e06c75; }
+.sidebar-footer { padding:10px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px; }
+.sb-btn { width:100%; padding:7px 10px; background:var(--surface); border:1px solid var(--border); border-radius:6px; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-body); display:flex; align-items:center; justify-content:center; gap:6px; transition:all .13s; white-space:nowrap; }
+.sb-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(16,163,127,.07); }
+.sb-btn.primary { background:rgba(16,163,127,.12); border-color:rgba(16,163,127,.35); color:var(--accent2); }
+.sb-btn.primary:hover { background:rgba(16,163,127,.22); }
 
-    /* Main */
-    #main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+/* Main */
+#main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
 
-    /* Header */
-    #header { height:var(--header-h); background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 12px; gap:8px; flex-shrink:0; }
-    .icon-btn { background:none; border:none; color:var(--text-muted); cursor:pointer; width:30px; height:30px; border-radius:6px; display:grid; place-items:center; font-size:15px; transition:background .13s,color .13s; flex-shrink:0; }
-    .icon-btn:hover { background:var(--surface); color:var(--text); }
-    #doc-title-wrap { flex:1; min-width:0; display:flex; align-items:center; gap:8px; }
-    #doc-title { font-size:13.5px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .unsaved-dot { width:7px; height:7px; border-radius:50%; background:var(--accent2); flex-shrink:0; display:none; }
-    .unsaved-dot.show { display:block; }
-    .header-right { display:flex; gap:4px; align-items:center; flex-shrink:0; }
-    .badge { font-size:11px; padding:2px 7px; border-radius:999px; background:rgba(16,163,127,.12); color:var(--accent2); border:1px solid rgba(16,163,127,.22); white-space:nowrap; }
-    .view-tabs { display:flex; background:var(--surface); border-radius:7px; padding:2px; gap:1px; }
-    .view-tab { padding:3px 10px; border-radius:5px; font-size:11.5px; font-weight:500; cursor:pointer; color:var(--text-muted); transition:all .13s; background:none; border:none; font-family:var(--font-body); }
-    .view-tab.active { background:var(--surface2); color:var(--text); }
+/* Header */
+#header { height:var(--header-h); background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 12px; gap:8px; flex-shrink:0; }
+.icon-btn { background:none; border:none; color:var(--text-muted); cursor:pointer; width:30px; height:30px; border-radius:6px; display:grid; place-items:center; font-size:15px; transition:background .13s,color .13s; flex-shrink:0; }
+.icon-btn:hover { background:var(--surface); color:var(--text); }
+#doc-title-wrap { flex:1; min-width:0; display:flex; align-items:center; gap:8px; }
+#doc-title { font-size:13.5px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.unsaved-dot { width:7px; height:7px; border-radius:50%; background:var(--accent2); flex-shrink:0; display:none; }
+.unsaved-dot.show { display:block; }
+.header-right { display:flex; gap:4px; align-items:center; flex-shrink:0; }
+.badge { font-size:11px; padding:2px 7px; border-radius:999px; background:rgba(16,163,127,.12); color:var(--accent2); border:1px solid rgba(16,163,127,.22); white-space:nowrap; }
+.view-tabs { display:flex; background:var(--surface); border-radius:7px; padding:2px; gap:1px; }
+.view-tab { padding:3px 10px; border-radius:5px; font-size:11.5px; font-weight:500; cursor:pointer; color:var(--text-muted); transition:all .13s; background:none; border:none; font-family:var(--font-body); }
+.view-tab.active { background:var(--surface2); color:var(--text); }
 
-    /* Workspace */
-    #workspace { flex:1; display:flex; overflow:hidden; }
-    #divider { width:4px; background:var(--border); cursor:col-resize; flex-shrink:0; transition:background .13s; }
-    #divider:hover, #divider.dragging { background:var(--accent); }
+/* Workspace */
+#workspace { flex:1; display:flex; overflow:hidden; }
+#divider { width:4px; background:var(--border); cursor:col-resize; flex-shrink:0; transition:background .13s; }
+#divider:hover, #divider.dragging { background:var(--accent); }
 
-    /* Editor pane */
-    #editor-pane { display:flex; flex-direction:column; overflow:hidden; min-width:0; width:50%; }
-    #toolbar { height:var(--toolbar-h); background:#1a1a1a; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 8px; gap:2px; flex-shrink:0; overflow-x:auto; }
-    #toolbar::-webkit-scrollbar { display:none; }
-    .tb-btn { background:none; border:none; color:var(--text-muted); cursor:pointer; height:26px; padding:0 7px; border-radius:5px; font-size:13px; font-family:var(--font-body); display:grid; place-items:center; transition:background .13s,color .13s; white-space:nowrap; flex-shrink:0; }
-    .tb-btn:hover { background:var(--surface2); color:var(--text); }
-    .tb-sep { width:1px; height:18px; background:var(--border); margin:0 3px; flex-shrink:0; }
-    #editor { flex:1; resize:none; border:none; outline:none; background:#1e1e1e; color:#d4d4d4; font-family:var(--font-code); font-size:13.5px; line-height:1.7; padding:20px 24px; overflow-y:auto; tab-size:2; caret-color:var(--accent2); }
-    #editor::-webkit-scrollbar { width:5px; }
-    #editor::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
-    #editor::selection { background:rgba(16,163,127,.25); }
+/* Editor pane */
+#editor-pane { display:flex; flex-direction:column; overflow:hidden; min-width:0; width:50%; }
+#toolbar { height:var(--toolbar-h); background:#1a1a1a; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 8px; gap:2px; flex-shrink:0; overflow-x:auto; }
+#toolbar::-webkit-scrollbar { display:none; }
+.tb-btn { background:none; border:none; color:var(--text-muted); cursor:pointer; height:26px; padding:0 7px; border-radius:5px; font-size:13px; font-family:var(--font-body); display:grid; place-items:center; transition:background .13s,color .13s; white-space:nowrap; flex-shrink:0; }
+.tb-btn:hover { background:var(--surface2); color:var(--text); }
+.tb-sep { width:1px; height:18px; background:var(--border); margin:0 3px; flex-shrink:0; }
+#editor { flex:1; resize:none; border:none; outline:none; background:#1e1e1e; color:#d4d4d4; font-family:var(--font-code); font-size:13.5px; line-height:1.7; padding:20px 24px; overflow-y:auto; tab-size:2; caret-color:var(--accent2); }
+#editor::-webkit-scrollbar { width:5px; }
+#editor::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+#editor::selection { background:rgba(16,163,127,.25); }
 
-    /* Preview pane */
-    #preview-pane { flex:1; overflow-y:auto; background:var(--bg); min-width:0; }
-    #preview-pane::-webkit-scrollbar { width:5px; }
-    #preview-pane::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
-    #preview { max-width:720px; margin:0 auto; padding:28px 28px 60px; }
+/* Preview pane */
+#preview-pane { flex:1; overflow-y:auto; background:var(--bg); min-width:0; }
+#preview-pane::-webkit-scrollbar { width:5px; }
+#preview-pane::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+#preview { max-width:720px; margin:0 auto; padding:28px 28px 60px; }
 
-    /* Markdown styles */
-    .md h1,.md h2,.md h3,.md h4,.md h5,.md h6 { font-weight:600; line-height:1.3; margin:1.6em 0 .5em; color:var(--text); }
-    .md h1 { font-size:1.85em; }
-    .md h2 { font-size:1.45em; border-bottom:1px solid var(--border); padding-bottom:.3em; }
-    .md h3 { font-size:1.18em; } .md h4 { font-size:1em; }
-    .md h1:first-child,.md h2:first-child { margin-top:0; }
-    .md p { font-size:15px; line-height:1.85; margin-bottom:.9em; }
-    .md a { color:var(--accent2); text-decoration:none; border-bottom:1px solid rgba(25,195,125,.3); transition:border-color .13s; }
-    .md a:hover { border-bottom-color:var(--accent2); }
-    .md strong { font-weight:600; color:#fff; }
-    .md em { font-style:italic; color:#d8d8d8; }
-    .md ul,.md ol { padding-left:1.5em; margin-bottom:.9em; }
-    .md li { font-size:15px; line-height:1.8; margin-bottom:.25em; }
-    .md li::marker { color:var(--accent); }
-    .md blockquote { border-left:3px solid var(--accent); margin:1em 0; padding:.5em 1.1em; background:rgba(16,163,127,.07); border-radius:0 6px 6px 0; color:var(--text-muted); font-style:italic; }
-    .md hr { border:none; border-top:1px solid var(--border); margin:1.8em 0; }
-    .md img { max-width:100%; border-radius:7px; margin:.8em 0; }
-    .md table { width:100%; border-collapse:collapse; margin:1em 0; font-size:14px; }
-    .md thead tr { background:var(--surface); }
-    .md th { padding:9px 13px; text-align:left; font-weight:600; font-size:12.5px; color:var(--text-muted); border-bottom:1px solid var(--border); }
-    .md td { padding:9px 13px; border-bottom:1px solid var(--border); }
-    .md tr:last-child td { border-bottom:none; }
-    .md tr:hover td { background:rgba(255,255,255,.025); }
-    .md code:not(pre code) { font-family:var(--font-code); font-size:13px; background:var(--surface2); color:#e0c080; padding:2px 6px; border-radius:4px; border:1px solid var(--border); }
-    .code-block { margin:1em 0; border-radius:9px; overflow:hidden; border:1px solid var(--border); }
-    .code-header { display:flex; align-items:center; justify-content:space-between; padding:7px 13px; background:#252525; border-bottom:1px solid var(--border); }
-    .code-lang { font-size:11px; color:var(--text-muted); font-family:var(--font-code); }
-    .copy-btn { font-size:11px; padding:2px 9px; background:none; border:1px solid var(--border); border-radius:4px; color:var(--text-muted); cursor:pointer; font-family:var(--font-body); transition:all .13s; }
-    .copy-btn:hover { background:var(--surface); color:var(--text); }
-    .copy-btn.copied { color:var(--accent2); border-color:var(--accent); }
-    .md pre { margin:0 !important; }
-    .md pre code { font-family:var(--font-code) !important; font-size:13px !important; line-height:1.65 !important; padding:15px !important; display:block; overflow-x:auto; background:transparent !important; }
-    .md input[type=checkbox] { accent-color:var(--accent); margin-right:6px; }
+/* Markdown styles */
+.md h1,.md h2,.md h3,.md h4,.md h5,.md h6 { font-weight:600; line-height:1.3; margin:1.6em 0 .5em; color:var(--text); }
+.md h1 { font-size:1.85em; }
+.md h2 { font-size:1.45em; border-bottom:1px solid var(--border); padding-bottom:.3em; }
+.md h3 { font-size:1.18em; } .md h4 { font-size:1em; }
+.md h1:first-child,.md h2:first-child { margin-top:0; }
+.md p { font-size:15px; line-height:1.85; margin-bottom:.9em; }
+.md a { color:var(--accent2); text-decoration:none; border-bottom:1px solid rgba(25,195,125,.3); transition:border-color .13s; }
+.md a:hover { border-bottom-color:var(--accent2); }
+.md strong { font-weight:600; color:#fff; }
+.md em { font-style:italic; color:#d8d8d8; }
+.md ul,.md ol { padding-left:1.5em; margin-bottom:.9em; }
+.md li { font-size:15px; line-height:1.8; margin-bottom:.25em; }
+.md li::marker { color:var(--accent); }
+.md blockquote { border-left:3px solid var(--accent); margin:1em 0; padding:.5em 1.1em; background:rgba(16,163,127,.07); border-radius:0 6px 6px 0; color:var(--text-muted); font-style:italic; }
+.md hr { border:none; border-top:1px solid var(--border); margin:1.8em 0; }
+.md img { max-width:100%; border-radius:7px; margin:.8em 0; }
+.md table { width:100%; border-collapse:collapse; margin:1em 0; font-size:14px; }
+.md thead tr { background:var(--surface); }
+.md th { padding:9px 13px; text-align:left; font-weight:600; font-size:12.5px; color:var(--text-muted); border-bottom:1px solid var(--border); }
+.md td { padding:9px 13px; border-bottom:1px solid var(--border); }
+.md tr:last-child td { border-bottom:none; }
+.md tr:hover td { background:rgba(255,255,255,.025); }
+.md code:not(pre code) { font-family:var(--font-code); font-size:13px; background:var(--surface2); color:#e0c080; padding:2px 6px; border-radius:4px; border:1px solid var(--border); }
+.code-block { margin:1em 0; border-radius:9px; overflow:hidden; border:1px solid var(--border); }
+.code-header { display:flex; align-items:center; justify-content:space-between; padding:7px 13px; background:#252525; border-bottom:1px solid var(--border); }
+.code-lang { font-size:11px; color:var(--text-muted); font-family:var(--font-code); }
+.copy-btn { font-size:11px; padding:2px 9px; background:none; border:1px solid var(--border); border-radius:4px; color:var(--text-muted); cursor:pointer; font-family:var(--font-body); transition:all .13s; }
+.copy-btn:hover { background:var(--surface); color:var(--text); }
+.copy-btn.copied { color:var(--accent2); border-color:var(--accent); }
+.md pre { margin:0 !important; }
+.md pre code { font-family:var(--font-code) !important; font-size:13px !important; line-height:1.65 !important; padding:15px !important; display:block; overflow-x:auto; background:transparent !important; }
+.md input[type=checkbox] { accent-color:var(--accent); margin-right:6px; }
 
-    /* View modes */
-    #workspace.editor-only #preview-pane,
-    #workspace.editor-only #divider { display:none; }
-    #workspace.editor-only #editor-pane { width:100%; }
-    #workspace.preview-only #editor-pane,
-    #workspace.preview-only #divider { display:none; }
-    #workspace.preview-only #preview-pane { flex:1; }
+/* ── MathJax 數學式樣式覆蓋 ── */
+/* 讓 SVG 數學式顏色融入深色主題 */
+.md mjx-container { color: var(--text); overflow-x: auto; max-width: 100%; }
+/* display math 置中並有間距 */
+.md mjx-container[display="true"] {
+  display: block;
+  margin: 1em auto;
+  text-align: center;
+  overflow-x: auto;
+  padding: 0.4em 0;
+}
+/* inline math 對齊基線 */
+.md mjx-container:not([display="true"]) {
+  vertical-align: middle;
+}
 
-    /* Empty state */
-    .empty-preview { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:14px; color:var(--text-muted); font-size:14px; text-align:center; padding:40px; }
-    .empty-icon { font-size:42px; opacity:.35; }
+/* View modes */
+#workspace.editor-only #preview-pane,
+#workspace.editor-only #divider { display:none; }
+#workspace.editor-only #editor-pane { width:100%; }
+#workspace.preview-only #editor-pane,
+#workspace.preview-only #divider { display:none; }
+#workspace.preview-only #preview-pane { flex:1; }
 
-    /* Mobile */
-    @media (max-width:700px) {
-      #sidebar { position:fixed; left:0; top:0; bottom:0; transform:translateX(calc(-1 * var(--sidebar-w))); width:var(--sidebar-w) !important; transition:transform .22s ease; }
-      #sidebar.mobile-open { transform:none; box-shadow:4px 0 28px #0009; }
-      #divider { display:none; }
-      #editor-pane { width:100% !important; }
-    }
+/* Empty state */
+.empty-preview { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:14px; color:var(--text-muted); font-size:14px; text-align:center; padding:40px; }
+.empty-icon { font-size:42px; opacity:.35; }
 
-    @keyframes fadeSlide { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
-    #preview > * { animation:fadeSlide .25s ease both; }
+/* Mobile */
+@media (max-width:700px) {
+  #sidebar { position:fixed; left:0; top:0; bottom:0; transform:translateX(calc(-1 * var(--sidebar-w))); width:var(--sidebar-w) !important; transition:transform .22s ease; }
+  #sidebar.mobile-open { transform:none; box-shadow:4px 0 28px #0009; }
+  #divider { display:none; }
+  #editor-pane { width:100% !important; }
+}
 
-    @media print {
-      #sidebar,#header,#editor-pane,#divider { display:none !important; }
-      body { background:#fff; color:#000; overflow:auto; }
-      #preview-pane { overflow:visible; }
-    }
-  </style>
+@keyframes fadeSlide { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+#preview > * { animation:fadeSlide .25s ease both; }
+
+@media print {
+  #sidebar,#header,#editor-pane,#divider { display:none !important; }
+  body { background:#fff; color:#000; overflow:auto; }
+  #preview-pane { overflow:visible; }
+}
+</style>
 </head>
 <body>
 <div id="app">
-
   <nav id="sidebar">
     <div class="sidebar-header">
       <div class="logo">M</div>
@@ -213,10 +248,16 @@
           <button class="tb-btn" data-action="image">🖼 圖片</button>
           <button class="tb-btn" data-action="table">⊞ 表格</button>
           <button class="tb-btn" data-action="hr">─ 分隔</button>
+          <div class="tb-sep"></div>
+          <!-- 新增：數學式快速插入按鈕 -->
+          <button class="tb-btn" data-action="math-inline" title="行內數學式 $...$">∑ 行內</button>
+          <button class="tb-btn" data-action="math-block" title="獨立數學式 $$...$$">∫ 區塊</button>
         </div>
         <textarea id="editor" spellcheck="false" placeholder="在這裡輸入 Markdown…"></textarea>
       </div>
+
       <div id="divider"></div>
+
       <div id="preview-pane">
         <div id="preview" class="md">
           <div class="empty-preview"><div class="empty-icon">✍️</div><span>開始輸入即可即時預覽</span></div>
@@ -227,14 +268,73 @@
 </div>
 
 <script>
+// ────────────────────────────────────────────────────────────
+// 數學式保護層
+// 在送給 marked 之前，先把 $$...$$、$...$、\[...\]、\(...\)
+// 置換成不會被 marked 破壞的佔位符，渲染 HTML 後再還原。
+// ────────────────────────────────────────────────────────────
+const mathStore = [];
+
+function escapeMath(src) {
+  mathStore.length = 0;
+
+  // 順序：先處理較長的 display math，再處理 inline math
+  // 1. $$...$$  (多行)
+  src = src.replace(/\$\$([\s\S]+?)\$\$/g, (_, tex) => {
+    const i = mathStore.length;
+    mathStore.push({ tex, display: true });
+    return `@@MATH_DISPLAY_${i}@@`;
+  });
+
+  // 2. \[...\]
+  src = src.replace(/\\\[([\s\S]+?)\\\]/g, (_, tex) => {
+    const i = mathStore.length;
+    mathStore.push({ tex, display: true });
+    return `@@MATH_DISPLAY_${i}@@`;
+  });
+
+  // 3. $...$ (inline)  — 避免匹配空字串與跨行
+  src = src.replace(/\$([^\$\n]+?)\$/g, (_, tex) => {
+    const i = mathStore.length;
+    mathStore.push({ tex, display: false });
+    return `@@MATH_INLINE_${i}@@`;
+  });
+
+  // 4. \(...\)
+  src = src.replace(/\\\((.+?)\\\)/gs, (_, tex) => {
+    const i = mathStore.length;
+    mathStore.push({ tex, display: false });
+    return `@@MATH_INLINE_${i}@@`;
+  });
+
+  return src;
+}
+
+function restoreMath(html) {
+  // display math 佔位符可能被 <p> 包住，直接替換節點內容即可
+  html = html.replace(/@@MATH_DISPLAY_(\d+)@@/g, (_, i) => {
+    const { tex } = mathStore[i];
+    // 用 \[...\] 讓 MathJax 識別為 display mode
+    return `\\[${tex}\\]`;
+  });
+
+  html = html.replace(/@@MATH_INLINE_(\d+)@@/g, (_, i) => {
+    const { tex } = mathStore[i];
+    return `\\(${tex}\\)`;
+  });
+
+  return html;
+}
+
 // ── marked ───────────────────────────────────────────
-marked.setOptions({ gfm:true, breaks:true });
+marked.setOptions({ gfm: true, breaks: true });
+
 const renderer = new marked.Renderer();
 renderer.code = (code, lang) => {
   const language = (lang || 'plaintext').trim() || 'plaintext';
   const safeLanguage = esc(language);
   let hl;
-  try { hl = hljs.highlight(code, { language, ignoreIllegals:true }).value; }
+  try { hl = hljs.highlight(code, { language, ignoreIllegals: true }).value; }
   catch { hl = hljs.highlightAuto(code).value; }
   return `<div class="code-block"><div class="code-header"><span class="code-lang">${safeLanguage}</span><button class="copy-btn" type="button">⎘ 複製</button></div><pre><code class="hljs language-${safeLanguage}">${hl}</code></pre></div>`;
 };
@@ -264,19 +364,23 @@ document.getElementById('sidebar-toggle').addEventListener('click', () => {
 });
 
 // ── View tabs ─────────────────────────────────────────
-const tabEls = { edit: document.getElementById('tab-edit'), split: document.getElementById('tab-split'), preview: document.getElementById('tab-preview') };
+const tabEls = {
+  edit:    document.getElementById('tab-edit'),
+  split:   document.getElementById('tab-split'),
+  preview: document.getElementById('tab-preview')
+};
 function setView(mode) {
   workspace.className = mode === 'edit' ? 'editor-only' : mode === 'preview' ? 'preview-only' : '';
-  Object.entries(tabEls).forEach(([k,el]) => el.classList.toggle('active', k === mode));
+  Object.entries(tabEls).forEach(([k, el]) => el.classList.toggle('active', k === mode));
   localStorage.setItem('md-view', mode);
 }
-tabEls.edit.addEventListener('click', () => setView('edit'));
-tabEls.split.addEventListener('click', () => setView('split'));
+tabEls.edit.addEventListener('click',    () => setView('edit'));
+tabEls.split.addEventListener('click',   () => setView('split'));
 tabEls.preview.addEventListener('click', () => setView('preview'));
 setView(localStorage.getItem('md-view') || 'split');
 
 // ── Divider drag ──────────────────────────────────────
-const divider = document.getElementById('divider');
+const divider    = document.getElementById('divider');
 const editorPane = document.getElementById('editor-pane');
 let dragging = false;
 divider.addEventListener('mousedown', e => { dragging = true; divider.classList.add('dragging'); e.preventDefault(); });
@@ -297,7 +401,6 @@ function newFile(name = '未命名文件', content = '') {
   buildFileList();
   activateFile(id);
 }
-
 function buildFileList() {
   fileListEl.innerHTML = '';
   const keys = Object.keys(files);
@@ -315,7 +418,6 @@ function buildFileList() {
     fileListEl.appendChild(el);
   });
 }
-
 function activateFile(id) {
   if (activeId && files[activeId]) files[activeId].content = editorEl.value;
   activeId = id;
@@ -327,7 +429,6 @@ function activateFile(id) {
   updateWC();
   editorEl.focus();
 }
-
 function deleteFile(id) {
   delete files[id];
   if (activeId === id) {
@@ -343,7 +444,6 @@ function deleteFile(id) {
 // ── New / Open / Save ─────────────────────────────────
 document.getElementById('new-btn').addEventListener('click', () => newFile());
 document.getElementById('open-btn').addEventListener('click', () => fileInputEl.click());
-
 fileInputEl.addEventListener('change', e => {
   Array.from(e.target.files).forEach(file => {
     const r = new FileReader();
@@ -352,11 +452,10 @@ fileInputEl.addEventListener('change', e => {
   });
   e.target.value = '';
 });
-
 document.getElementById('save-btn').addEventListener('click', () => {
   if (!activeId) return;
   files[activeId].content = editorEl.value;
-  const blob = new Blob([editorEl.value], { type:'text/markdown' });
+  const blob = new Blob([editorEl.value], { type: 'text/markdown' });
   const a = document.createElement('a');
   const downloadUrl = URL.createObjectURL(blob);
   a.href = downloadUrl;
@@ -371,15 +470,14 @@ editorEl.addEventListener('input', () => {
   if (activeId) files[activeId].content = editorEl.value;
   unsaved = true; udot.classList.add('show');
   clearTimeout(renderTimer);
-  renderTimer = setTimeout(renderPreview, 100);
+  renderTimer = setTimeout(renderPreview, 150);
   updateWC();
 });
-
 editorEl.addEventListener('keydown', e => {
   if (e.key === 'Tab') { e.preventDefault(); insertAt('  '); return; }
   if (e.ctrlKey || e.metaKey) {
-    if (e.key === 'b') { e.preventDefault(); wrap('**','**'); }
-    if (e.key === 'i') { e.preventDefault(); wrap('_','_'); }
+    if (e.key === 'b') { e.preventDefault(); wrap('**', '**'); }
+    if (e.key === 'i') { e.preventDefault(); wrap('_', '_'); }
     if (e.key === 's') { e.preventDefault(); document.getElementById('save-btn').click(); }
   }
 });
@@ -389,23 +487,26 @@ document.querySelectorAll('.tb-btn[data-action]').forEach(btn => {
   btn.addEventListener('click', () => {
     editorEl.focus();
     const sel = editorEl.value.substring(editorEl.selectionStart, editorEl.selectionEnd);
-    switch(btn.dataset.action) {
-      case 'bold':      wrap('**','**'); break;
-      case 'italic':    wrap('_','_'); break;
-      case 'strike':    wrap('~~','~~'); break;
-      case 'h1':        prependLine('# '); break;
-      case 'h2':        prependLine('## '); break;
-      case 'h3':        prependLine('### '); break;
-      case 'ul':        prependLine('- '); break;
-      case 'ol':        prependLine('1. '); break;
-      case 'task':      prependLine('- [ ] '); break;
-      case 'quote':     prependLine('> '); break;
-      case 'code':      wrap('`','`'); break;
-      case 'codeblock': insertAt('```\n'+(sel||'code')+'\n```'); break;
-      case 'link':      insertAt(`[${sel||'連結文字'}](url)`); break;
-      case 'image':     insertAt(`![${sel||'圖片說明'}](url)`); break;
-      case 'table':     insertAt('\n| 欄位1 | 欄位2 | 欄位3 |\n|-------|-------|-------|\n| 內容  | 內容  | 內容  |\n'); break;
-      case 'hr':        insertAt('\n---\n'); break;
+    switch (btn.dataset.action) {
+      case 'bold':         wrap('**', '**'); break;
+      case 'italic':       wrap('_', '_'); break;
+      case 'strike':       wrap('~~', '~~'); break;
+      case 'h1':           prependLine('# '); break;
+      case 'h2':           prependLine('## '); break;
+      case 'h3':           prependLine('### '); break;
+      case 'ul':           prependLine('- '); break;
+      case 'ol':           prependLine('1. '); break;
+      case 'task':         prependLine('- [ ] '); break;
+      case 'quote':        prependLine('> '); break;
+      case 'code':         wrap('`', '`'); break;
+      case 'codeblock':    insertAt('```\n' + (sel || 'code') + '\n```'); break;
+      case 'link':         insertAt(`[${sel || '連結文字'}](url)`); break;
+      case 'image':        insertAt(`![${sel || '圖片說明'}](url)`); break;
+      case 'table':        insertAt('\n| 欄位1 | 欄位2 | 欄位3 |\n|-------|-------|-------|\n| 內容 | 內容 | 內容 |\n'); break;
+      case 'hr':           insertAt('\n---\n'); break;
+      // 數學式插入
+      case 'math-inline':  wrap('$', '$'); break;
+      case 'math-block':   insertAt('\n$$\n' + (sel || 'E = mc^2') + '\n$$\n'); break;
     }
     renderPreview();
   });
@@ -419,13 +520,36 @@ function renderPreview() {
     previewEl.innerHTML = '<div class="empty-preview"><div class="empty-icon">✍️</div><span>開始輸入即可即時預覽</span></div>';
     return;
   }
+
+  // 1. 先保護數學式，避免被 marked 誤處理
+  const protectedMd = escapeMath(md);
+
+  // 2. 用 marked 轉換 Markdown → HTML
+  let html = marked.parse(protectedMd);
+
+  // 3. sanitize
+  html = sanitizeHtml(html);
+
+  // 4. 還原數學式佔位符為 MathJax 語法
+  html = restoreMath(html);
+
+  // 5. 注入 HTML
   previewEl.className = 'md';
-  previewEl.innerHTML = sanitizeHtml(marked.parse(md));
+  previewEl.innerHTML = html;
+
+  // 6. 呼叫 MathJax 重新排版預覽區域
+  if (window.MathJax && MathJax.typesetPromise) {
+    MathJax.typesetPromise([previewEl]).catch(err => console.warn('MathJax error:', err));
+  }
 }
 
 function updateWC() {
-  const plain = editorEl.value.replace(/```[\s\S]*?```/g,'').replace(/`[^`]*`/g,'').replace(/[#*_\[\]>!]/g,'');
-  const wc = (plain.match(/[\u4e00-\u9fff\u3040-\u30ff]/g)||[]).length + (plain.match(/\b\w+\b/g)||[]).length;
+  const plain = editorEl.value
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`[^`]*`/g, '')
+    .replace(/[#*_\[\]>!]/g, '');
+  const wc = (plain.match(/[\u4e00-\u9fff\u3040-\u30ff]/g) || []).length
+           + (plain.match(/\b\w+\b/g) || []).length;
   wcEl.textContent = wc + ' 字';
   wcEl.style.display = wc ? 'inline' : 'none';
 }
@@ -450,8 +574,9 @@ function insertAt(text) {
   editorEl.setRangeText(text, s, e, 'end');
   editorEl.dispatchEvent(new Event('input'));
 }
-function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
+function esc(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 function sanitizeHtml(html) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
@@ -462,13 +587,15 @@ function sanitizeHtml(html) {
   ]);
   const globalAttrs = new Set(['class', 'title', 'aria-label']);
   const allowedAttrs = {
-    a: new Set(['href', 'target', 'rel']),
+    a:      new Set(['href', 'target', 'rel']),
     button: new Set(['type']),
-    code: new Set(['class']),
-    img: new Set(['src', 'alt']),
-    input: new Set(['type', 'checked', 'disabled'])
+    code:   new Set(['class']),
+    img:    new Set(['src', 'alt']),
+    input:  new Set(['type', 'checked', 'disabled'])
   };
-  const safeUrl = value => /^(https?:|mailto:|tel:|data:image\/)/i.test(value) || /^(\/|\.\/|\.\.\/|#)/.test(value);
+  const safeUrl = value =>
+    /^(https?:|mailto:|tel:|data:image\/)/i.test(value) ||
+    /^(\/|\.\/|\.\.\/|#)/.test(value);
 
   doc.body.querySelectorAll('*').forEach(node => {
     const tag = node.tagName.toLowerCase();
@@ -476,22 +603,15 @@ function sanitizeHtml(html) {
       node.replaceWith(...node.childNodes);
       return;
     }
-
     [...node.attributes].forEach(attr => {
-      const name = attr.name.toLowerCase();
+      const name  = attr.name.toLowerCase();
       const value = attr.value.trim();
       const tagAttrs = allowedAttrs[tag] || new Set();
-      const allowed = globalAttrs.has(name) || tagAttrs.has(name);
-      const isEvent = name.startsWith('on');
-      if (isEvent || !allowed) {
-        node.removeAttribute(attr.name);
-        return;
-      }
-      if ((name === 'href' || name === 'src') && !safeUrl(value)) {
-        node.removeAttribute(attr.name);
-      }
+      const allowed  = globalAttrs.has(name) || tagAttrs.has(name);
+      const isEvent  = name.startsWith('on');
+      if (isEvent || !allowed) { node.removeAttribute(attr.name); return; }
+      if ((name === 'href' || name === 'src') && !safeUrl(value)) node.removeAttribute(attr.name);
     });
-
     if (tag === 'a' && node.hasAttribute('href')) {
       node.setAttribute('target', '_blank');
       node.setAttribute('rel', 'noopener noreferrer');
@@ -501,7 +621,6 @@ function sanitizeHtml(html) {
       else node.setAttribute('disabled', '');
     }
   });
-
   return doc.body.innerHTML;
 }
 
@@ -556,7 +675,7 @@ window.addEventListener('beforeunload', persist);
 if (!restore()) {
   newFile('歡迎使用.md', `# 歡迎使用 MD Editor 👋
 
-這是一個支援 **即時預覽** 的 Markdown 編輯器，風格貼近 ChatGPT。
+這是一個支援 **即時預覽** 的 Markdown 編輯器，風格貼近 ChatGPT，現在也支援 **數學式顯示**！
 
 ## 功能特色
 
@@ -566,6 +685,37 @@ if (!restore()) {
 - ✅ 自動儲存到 LocalStorage
 - ✅ 匯入 / 匯出 \`.md\` 檔案
 - ✅ PWA 可安裝、離線使用
+- ✅ **數學式顯示（MathJax 3）**
+
+## 數學式範例
+
+### 行內數學式
+
+愛因斯坦的質能方程式 $E = mc^2$ 改變了物理學。
+
+黃金比例：$\\varphi = \\dfrac{1+\\sqrt{5}}{2} \\approx 1.618$
+
+### 獨立（Display）數學式
+
+$$
+\\int_{-\\infty}^{\\infty} e^{-x^2} \\, dx = \\sqrt{\\pi}
+$$
+
+馬克士威方程式組：
+
+$$
+\\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\varepsilon_0}
+$$
+
+$$
+\\nabla \\times \\mathbf{B} = \\mu_0 \\mathbf{J} + \\mu_0\\varepsilon_0 \\frac{\\partial \\mathbf{E}}{\\partial t}
+$$
+
+二次方程式解：
+
+$$
+x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}
+$$
 
 ## 快捷鍵
 
@@ -585,7 +735,7 @@ def hello(name):
 hello("世界")
 \`\`\`
 
-> 左側輸入，右側即時預覽。盡情開始編輯吧！
+> 左側輸入，右側即時預覽。數學式以 \`$...$\` 行內或 \`$$...$$\` 區塊語法輸入。
 `);
 }
 
@@ -593,16 +743,17 @@ hello("世界")
 function makeIconBlob(size) {
   const c = document.createElement('canvas'); c.width = c.height = size;
   const ctx = c.getContext('2d');
-  const g = ctx.createLinearGradient(0,0,size,size);
-  g.addColorStop(0,'#10a37f'); g.addColorStop(1,'#0d7a60'); ctx.fillStyle = g;
-  const r = size*.22;
-  ctx.beginPath(); ctx.moveTo(r,0); ctx.lineTo(size-r,0); ctx.quadraticCurveTo(size,0,size,r);
-  ctx.lineTo(size,size-r); ctx.quadraticCurveTo(size,size,size-r,size);
-  ctx.lineTo(r,size); ctx.quadraticCurveTo(0,size,0,size-r);
-  ctx.lineTo(0,r); ctx.quadraticCurveTo(0,0,r,0); ctx.fill();
-  ctx.fillStyle='#fff'; ctx.font=`bold ${size*.52}px sans-serif`;
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText('M', size/2, size/2+size*.03);
+  const g = ctx.createLinearGradient(0, 0, size, size);
+  g.addColorStop(0, '#10a37f'); g.addColorStop(1, '#0d7a60'); ctx.fillStyle = g;
+  const r = size * .22;
+  ctx.beginPath();
+  ctx.moveTo(r, 0); ctx.lineTo(size - r, 0); ctx.quadraticCurveTo(size, 0, size, r);
+  ctx.lineTo(size, size - r); ctx.quadraticCurveTo(size, size, size - r, size);
+  ctx.lineTo(r, size); ctx.quadraticCurveTo(0, size, 0, size - r);
+  ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = `bold ${size * .52}px sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('M', size / 2, size / 2 + size * .03);
   return new Promise(res => c.toBlob(b => res(URL.createObjectURL(b)), 'image/png'));
 }
 async function injectManifest() {
@@ -611,18 +762,22 @@ async function injectManifest() {
   const [u192, u512] = await Promise.all([makeIconBlob(192), makeIconBlob(512)]);
   runtimeIconUrls = [u192, u512];
   document.getElementById('apple-icon').href = u192;
-  const m = { name:'MD Editor', short_name:'MD Editor',
-    description:'ChatGPT-style Markdown Editor PWA',
-    start_url: location.href.split('?')[0], id: location.origin+'/',
-    display:'standalone', background_color:'#212121', theme_color:'#212121', orientation:'any',
-    icons:[{src:u192,sizes:'192x192',type:'image/png',purpose:'any maskable'},{src:u512,sizes:'512x512',type:'image/png',purpose:'any maskable'}] };
-  const blob = new Blob([JSON.stringify(m)],{type:'application/json'});
+  const m = {
+    name: 'MD Editor', short_name: 'MD Editor',
+    description: 'ChatGPT-style Markdown Editor PWA',
+    start_url: location.href.split('?')[0], id: location.origin + '/',
+    display: 'standalone', background_color: '#212121', theme_color: '#212121', orientation: 'any',
+    icons: [
+      { src: u192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+      { src: u512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(m)], { type: 'application/json' });
   runtimeManifestUrl = URL.createObjectURL(blob);
   document.querySelector('link[rel="manifest"]').href = runtimeManifestUrl;
 }
 injectManifest();
-
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>

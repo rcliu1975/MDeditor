@@ -1,6 +1,0 @@
-
-python -m http.server 8080
-
-
-:: 下載 cloudflared.exe 放到 D:\bin_prog\
-cloudflared tunnel --url http://localhost:8080
