@@ -349,6 +349,7 @@ const sidebar    = document.getElementById('sidebar');
 const fileListEl = document.getElementById('file-list');
 const editorEl   = document.getElementById('editor');
 const previewEl  = document.getElementById('preview');
+const previewPane = document.getElementById('preview-pane');
 const docTitleEl = document.getElementById('doc-title');
 const wcEl       = document.getElementById('word-count');
 const udot       = document.getElementById('unsaved-dot');
@@ -356,6 +357,38 @@ const workspace  = document.getElementById('workspace');
 const fileInputEl = document.getElementById('file-input');
 let runtimeIconUrls = [];
 let runtimeManifestUrl = null;
+
+// ── Scroll Sync ──────────────────────────────────────
+let isSyncingEditorScroll = false;
+let isSyncingPreviewScroll = false;
+
+editorEl.addEventListener('scroll', () => {
+  if (workspace.className !== '') return; // 僅在分割模式同步
+  if (isSyncingEditorScroll) {
+    isSyncingEditorScroll = false;
+    return;
+  }
+  isSyncingPreviewScroll = true;
+  const maxEditorScroll = editorEl.scrollHeight - editorEl.clientHeight;
+  if (maxEditorScroll > 0) {
+    const scrollPercentage = editorEl.scrollTop / maxEditorScroll;
+    previewPane.scrollTop = scrollPercentage * (previewPane.scrollHeight - previewPane.clientHeight);
+  }
+});
+
+previewPane.addEventListener('scroll', () => {
+  if (workspace.className !== '') return; // 僅在分割模式同步
+  if (isSyncingPreviewScroll) {
+    isSyncingPreviewScroll = false;
+    return;
+  }
+  isSyncingEditorScroll = true;
+  const maxPreviewScroll = previewPane.scrollHeight - previewPane.clientHeight;
+  if (maxPreviewScroll > 0) {
+    const scrollPercentage = previewPane.scrollTop / maxPreviewScroll;
+    editorEl.scrollTop = scrollPercentage * (editorEl.scrollHeight - editorEl.clientHeight);
+  }
+});
 
 // ── Sidebar ──────────────────────────────────────────
 document.getElementById('sidebar-toggle').addEventListener('click', () => {
@@ -373,6 +406,17 @@ function setView(mode) {
   workspace.className = mode === 'edit' ? 'editor-only' : mode === 'preview' ? 'preview-only' : '';
   Object.entries(tabEls).forEach(([k, el]) => el.classList.toggle('active', k === mode));
   localStorage.setItem('md-view', mode);
+
+  if (mode === 'split') {
+    // 切換回分割模式時進行一次初始同步
+    requestAnimationFrame(() => {
+      const maxEditorScroll = editorEl.scrollHeight - editorEl.clientHeight;
+      if (maxEditorScroll > 0) {
+        const scrollPercentage = editorEl.scrollTop / maxEditorScroll;
+        previewPane.scrollTop = scrollPercentage * (previewPane.scrollHeight - previewPane.clientHeight);
+      }
+    });
+  }
 }
 tabEls.edit.addEventListener('click',    () => setView('edit'));
 tabEls.split.addEventListener('click',   () => setView('split'));
@@ -395,9 +439,9 @@ document.addEventListener('mousemove', e => {
 document.addEventListener('mouseup', () => { dragging = false; divider.classList.remove('dragging'); });
 
 // ── Files ─────────────────────────────────────────────
-function newFile(name = '未命名文件', content = '') {
+function newFile(name = '未命名文件', content = '', handle = null) {
   const id = 'f' + (++idCounter);
-  files[id] = { name, content };
+  files[id] = { name, content, handle };
   buildFileList();
   activateFile(id);
 }
@@ -443,7 +487,27 @@ function deleteFile(id) {
 
 // ── New / Open / Save ─────────────────────────────────
 document.getElementById('new-btn').addEventListener('click', () => newFile());
-document.getElementById('open-btn').addEventListener('click', () => fileInputEl.click());
+
+document.getElementById('open-btn').addEventListener('click', async () => {
+  if ('showOpenFilePicker' in window) {
+    try {
+      const handles = await window.showOpenFilePicker({
+        types: [{ description: 'Markdown Files', accept: { 'text/markdown': ['.md'], 'text/plain': ['.txt'] } }],
+        multiple: true
+      });
+      for (const handle of handles) {
+        const file = await handle.getFile();
+        const content = await file.text();
+        newFile(file.name, content, handle);
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') console.error(err);
+    }
+  } else {
+    fileInputEl.click();
+  }
+});
+
 fileInputEl.addEventListener('change', e => {
   Array.from(e.target.files).forEach(file => {
     const r = new FileReader();
@@ -452,14 +516,53 @@ fileInputEl.addEventListener('change', e => {
   });
   e.target.value = '';
 });
-document.getElementById('save-btn').addEventListener('click', () => {
+
+document.getElementById('save-btn').addEventListener('click', async () => {
   if (!activeId) return;
-  files[activeId].content = editorEl.value;
-  const blob = new Blob([editorEl.value], { type: 'text/markdown' });
+  const f = files[activeId];
+  f.content = editorEl.value;
+
+  // 如果有檔案控制句柄 (Chrome/Edge)，直接存檔
+  if (f.handle) {
+    try {
+      const writable = await f.handle.createWritable();
+      await writable.write(f.content);
+      await writable.close();
+      unsaved = false; udot.classList.remove('show');
+      return;
+    } catch (err) {
+      console.error('直接存檔失敗，改用下載方式', err);
+    }
+  }
+
+  // 備案：如果支援 showSaveFilePicker
+  if ('showSaveFilePicker' in window) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: f.name.endsWith('.md') ? f.name : f.name + '.md',
+        types: [{ description: 'Markdown Files', accept: { 'text/markdown': ['.md'] } }]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(f.content);
+      await writable.close();
+      f.handle = handle;
+      f.name = handle.name;
+      docTitleEl.textContent = f.name;
+      buildFileList();
+      unsaved = false; udot.classList.remove('show');
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.error('showSaveFilePicker 失敗', err);
+    }
+  }
+
+  // 傳統下載備案
+  const blob = new Blob([f.content], { type: 'text/markdown' });
   const a = document.createElement('a');
   const downloadUrl = URL.createObjectURL(blob);
   a.href = downloadUrl;
-  a.download = files[activeId].name.endsWith('.md') ? files[activeId].name : files[activeId].name + '.md';
+  a.download = f.name.endsWith('.md') ? f.name : f.name + '.md';
   a.click();
   setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
   unsaved = false; udot.classList.remove('show');
