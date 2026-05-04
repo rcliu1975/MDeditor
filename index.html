@@ -47,7 +47,7 @@ window.MathJax = {
 html,body { height:100%; font-family:var(--font-body); background:var(--bg); color:var(--text); overflow:hidden; }
 
 /* App */
-#app { display:flex; height:100vh; }
+#app { display:flex; height:100dvh; }
 
 /* Sidebar */
 #sidebar { width:var(--sidebar-w); background:#181818; border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; transition:width .22s ease; overflow:hidden; z-index:100; }
@@ -161,6 +161,10 @@ html,body { height:100%; font-family:var(--font-body); background:var(--bg); col
   vertical-align: middle;
 }
 
+/* Sidebar Overlay */
+#sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:95; backdrop-filter:blur(2px); }
+#sidebar-overlay.show { display:block; }
+
 /* View modes */
 #workspace.editor-only #preview-pane,
 #workspace.editor-only #divider { display:none; }
@@ -175,10 +179,26 @@ html,body { height:100%; font-family:var(--font-body); background:var(--bg); col
 
 /* Mobile */
 @media (max-width:700px) {
-  #sidebar { position:fixed; left:0; top:0; bottom:0; transform:translateX(calc(-1 * var(--sidebar-w))); width:var(--sidebar-w) !important; transition:transform .22s ease; }
+  :root { --sidebar-w:260px; --header-h:54px; --toolbar-h:44px; }
+  #sidebar { position:fixed; left:0; top:0; bottom:0; transform:translateX(calc(-1 * var(--sidebar-w))); width:var(--sidebar-w) !important; transition:transform .22s cubic-bezier(0.4, 0, 0.2, 1); }
   #sidebar.mobile-open { transform:none; box-shadow:4px 0 28px #0009; }
   #divider { display:none; }
-  #editor-pane { width:100% !important; }
+  #editor-pane, #preview-pane { width:100% !important; flex:none !important; }
+  #tab-split { display:none; }
+  
+  #header { padding:0 8px; gap:4px; }
+  #doc-title { font-size:13px; }
+  .view-tab { padding:4px 8px; font-size:11px; }
+  
+  #editor { padding:15px 18px; font-size:14.5px; }
+  #preview { padding:20px 18px 50px; }
+  
+  .tb-btn { height:32px; padding:0 10px; font-size:14px; }
+  .mobile-only { display:grid !important; }
+}
+
+@media (max-width:400px) {
+  #word-count, #print-btn { display:none !important; }
 }
 
 @keyframes fadeSlide { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
@@ -193,10 +213,12 @@ html,body { height:100%; font-family:var(--font-body); background:var(--bg); col
 </head>
 <body>
 <div id="app">
+  <div id="sidebar-overlay"></div>
   <nav id="sidebar">
     <div class="sidebar-header">
       <div class="logo">M</div>
       <span class="sidebar-title">MD Editor</span>
+      <button class="icon-btn mobile-only" id="sidebar-close" style="margin-left:auto; display:none;">✕</button>
     </div>
     <div id="file-list"></div>
     <div class="sidebar-footer">
@@ -225,34 +247,35 @@ html,body { height:100%; font-family:var(--font-body); background:var(--bg); col
       </div>
     </header>
 
+    <div id="toolbar">
+      <button class="tb-btn" data-action="bold"><b>B</b></button>
+      <button class="tb-btn" data-action="italic"><i>I</i></button>
+      <button class="tb-btn" data-action="strike"><s>S</s></button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" data-action="h1">H1</button>
+      <button class="tb-btn" data-action="h2">H2</button>
+      <button class="tb-btn" data-action="h3">H3</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" data-action="ul">• 清單</button>
+      <button class="tb-btn" data-action="ol">1. 清單</button>
+      <button class="tb-btn" data-action="task">☐ 待辦</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" data-action="quote">❝ 引用</button>
+      <button class="tb-btn" data-action="code">`code`</button>
+      <button class="tb-btn" data-action="codeblock">``` 區塊</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" data-action="link">🔗 連結</button>
+      <button class="tb-btn" data-action="image">🖼 圖片</button>
+      <button class="tb-btn" data-action="table">⊞ 表格</button>
+      <button class="tb-btn" data-action="hr">─ 分隔</button>
+      <div class="tb-sep"></div>
+      <!-- 新增：數學式快速插入按鈕 -->
+      <button class="tb-btn" data-action="math-inline" title="行內數學式 $...$">∑ 行內</button>
+      <button class="tb-btn" data-action="math-block" title="獨立數學式 $$...$$">∫ 區塊</button>
+    </div>
+
     <div id="workspace">
       <div id="editor-pane">
-        <div id="toolbar">
-          <button class="tb-btn" data-action="bold"><b>B</b></button>
-          <button class="tb-btn" data-action="italic"><i>I</i></button>
-          <button class="tb-btn" data-action="strike"><s>S</s></button>
-          <div class="tb-sep"></div>
-          <button class="tb-btn" data-action="h1">H1</button>
-          <button class="tb-btn" data-action="h2">H2</button>
-          <button class="tb-btn" data-action="h3">H3</button>
-          <div class="tb-sep"></div>
-          <button class="tb-btn" data-action="ul">• 清單</button>
-          <button class="tb-btn" data-action="ol">1. 清單</button>
-          <button class="tb-btn" data-action="task">☐ 待辦</button>
-          <div class="tb-sep"></div>
-          <button class="tb-btn" data-action="quote">❝ 引用</button>
-          <button class="tb-btn" data-action="code">`code`</button>
-          <button class="tb-btn" data-action="codeblock">``` 區塊</button>
-          <div class="tb-sep"></div>
-          <button class="tb-btn" data-action="link">🔗 連結</button>
-          <button class="tb-btn" data-action="image">🖼 圖片</button>
-          <button class="tb-btn" data-action="table">⊞ 表格</button>
-          <button class="tb-btn" data-action="hr">─ 分隔</button>
-          <div class="tb-sep"></div>
-          <!-- 新增：數學式快速插入按鈕 -->
-          <button class="tb-btn" data-action="math-inline" title="行內數學式 $...$">∑ 行內</button>
-          <button class="tb-btn" data-action="math-block" title="獨立數學式 $$...$$">∫ 區塊</button>
-        </div>
         <textarea id="editor" spellcheck="false" placeholder="在這裡輸入 Markdown…"></textarea>
       </div>
 
@@ -346,6 +369,7 @@ let activeId = null, unsaved = false, renderTimer = null, idCounter = 0;
 
 // ── DOM ──────────────────────────────────────────────
 const sidebar    = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
 const fileListEl = document.getElementById('file-list');
 const editorEl   = document.getElementById('editor');
 const previewEl  = document.getElementById('preview');
@@ -363,7 +387,7 @@ let isSyncingEditorScroll = false;
 let isSyncingPreviewScroll = false;
 
 editorEl.addEventListener('scroll', () => {
-  if (workspace.className !== '') return; // 僅在分割模式同步
+  if (workspace.className !== '' || window.innerWidth <= 700) return; // 僅在桌面分割模式同步
   if (isSyncingEditorScroll) {
     isSyncingEditorScroll = false;
     return;
@@ -377,7 +401,7 @@ editorEl.addEventListener('scroll', () => {
 });
 
 previewPane.addEventListener('scroll', () => {
-  if (workspace.className !== '') return; // 僅在分割模式同步
+  if (workspace.className !== '' || window.innerWidth <= 700) return; // 僅在桌面分割模式同步
   if (isSyncingPreviewScroll) {
     isSyncingPreviewScroll = false;
     return;
@@ -391,10 +415,22 @@ previewPane.addEventListener('scroll', () => {
 });
 
 // ── Sidebar ──────────────────────────────────────────
+const closeSidebar = () => {
+  sidebar.classList.remove('mobile-open');
+  sidebarOverlay.classList.remove('show');
+};
+
 document.getElementById('sidebar-toggle').addEventListener('click', () => {
-  if (window.innerWidth <= 700) sidebar.classList.toggle('mobile-open');
-  else sidebar.classList.toggle('collapsed');
+  if (window.innerWidth <= 700) {
+    const isOpen = sidebar.classList.toggle('mobile-open');
+    sidebarOverlay.classList.toggle('show', isOpen);
+  } else {
+    sidebar.classList.toggle('collapsed');
+  }
 });
+
+sidebarOverlay.addEventListener('click', closeSidebar);
+document.getElementById('sidebar-close').addEventListener('click', closeSidebar);
 
 // ── View tabs ─────────────────────────────────────────
 const tabEls = {
@@ -403,11 +439,12 @@ const tabEls = {
   preview: document.getElementById('tab-preview')
 };
 function setView(mode) {
+  if (window.innerWidth <= 700 && mode === 'split') mode = 'edit';
   workspace.className = mode === 'edit' ? 'editor-only' : mode === 'preview' ? 'preview-only' : '';
   Object.entries(tabEls).forEach(([k, el]) => el.classList.toggle('active', k === mode));
   localStorage.setItem('md-view', mode);
 
-  if (mode === 'split') {
+  if (mode === 'split' && window.innerWidth > 700) {
     // 切換回分割模式時進行一次初始同步
     requestAnimationFrame(() => {
       const maxEditorScroll = editorEl.scrollHeight - editorEl.clientHeight;
@@ -421,6 +458,14 @@ function setView(mode) {
 tabEls.edit.addEventListener('click',    () => setView('edit'));
 tabEls.split.addEventListener('click',   () => setView('split'));
 tabEls.preview.addEventListener('click', () => setView('preview'));
+
+// 視窗大小改變時，如果在手機模式卻是 split，強制轉為 edit
+window.addEventListener('resize', () => {
+  if (window.innerWidth <= 700 && workspace.className === '') {
+    setView('edit');
+  }
+});
+
 setView(localStorage.getItem('md-view') || 'split');
 
 // ── Divider drag ──────────────────────────────────────
@@ -472,6 +517,7 @@ function activateFile(id) {
   renderPreview();
   updateWC();
   editorEl.focus();
+  if (window.innerWidth <= 700) closeSidebar();
 }
 function deleteFile(id) {
   delete files[id];
@@ -588,6 +634,7 @@ editorEl.addEventListener('keydown', e => {
 // ── Toolbar ───────────────────────────────────────────
 document.querySelectorAll('.tb-btn[data-action]').forEach(btn => {
   btn.addEventListener('click', () => {
+    if (workspace.className === 'preview-only') setView('edit');
     editorEl.focus();
     const sel = editorEl.value.substring(editorEl.selectionStart, editorEl.selectionEnd);
     switch (btn.dataset.action) {
