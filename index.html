@@ -40,17 +40,41 @@ window.MathJax = {
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
   --bg:#212121; --surface:#2f2f2f; --surface2:#3a3a3a; --border:#444;
-  --text:#ececec; --text-muted:#a0a0a0; --accent:#10a37f; --accent2:#19c37d;
+  --text:#d0d0d0; --text-muted:#888; --accent:#10a37f; --accent2:#19c37d;
+  --sidebar-bg:#181818; --toolbar-bg:#1a1a1a;
   --font-body:'Sora',sans-serif; --font-code:'JetBrains Mono',monospace;
   --sidebar-w:240px; --header-h:48px; --toolbar-h:38px;
+  --shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
+
+body.theme-light {
+  --bg:#f9f9f9; --surface:#ffffff; --surface2:#efefef; --border:#ccc;
+  --text:#1a1a1a; --text-muted:#444; --accent:#0e8a6c; --accent2:#0b8468;
+  --sidebar-bg:#ffffff; --toolbar-bg:#f3f3f3;
+  --shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+body.theme-eink {
+  --bg:#ffffff; --surface:#ffffff; --surface2:#eeeeee; --border:#000;
+  --text:#000000; --text-muted:#111; --accent:#000000; --accent2:#000000;
+  --sidebar-bg:#ffffff; --toolbar-bg:#ffffff;
+  --shadow: none;
+}
+
+body.theme-eink * { 
+  transition: none !important; 
+  animation: none !important; 
+  box-shadow: none !important; 
+  text-shadow: none !important;
+}
+
 html,body { height:100%; font-family:var(--font-body); background:var(--bg); color:var(--text); overflow:hidden; }
 
 /* App */
 #app { display:flex; height:100dvh; }
 
 /* Sidebar */
-#sidebar { width:var(--sidebar-w); background:#181818; border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; transition:width .22s ease; overflow:hidden; z-index:100; }
+#sidebar { width:var(--sidebar-w); background:var(--sidebar-bg); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; transition:width .22s ease, background 0.2s; overflow:hidden; z-index:100; }
 #sidebar.collapsed { width:0; }
 .sidebar-header { height:var(--header-h); padding:0 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:9px; flex-shrink:0; }
 .logo { width:26px; height:26px; background:var(--accent); border-radius:6px; display:grid; place-items:center; font-size:13px; font-weight:700; color:#fff; flex-shrink:0; }
@@ -83,6 +107,8 @@ html,body { height:100%; font-family:var(--font-body); background:var(--bg); col
 .unsaved-dot { width:7px; height:7px; border-radius:50%; background:var(--accent2); flex-shrink:0; display:none; }
 .unsaved-dot.show { display:block; }
 .header-right { display:flex; gap:4px; align-items:center; flex-shrink:0; }
+.theme-select { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:6px; font-size:11.5px; padding:3px 6px; cursor:pointer; font-family:var(--font-body); outline:none; }
+.theme-select:hover { border-color:var(--accent); }
 .badge { font-size:11px; padding:2px 7px; border-radius:999px; background:rgba(16,163,127,.12); color:var(--accent2); border:1px solid rgba(16,163,127,.22); white-space:nowrap; }
 .view-tabs { display:flex; background:var(--surface); border-radius:7px; padding:2px; gap:1px; }
 .view-tab { padding:3px 10px; border-radius:5px; font-size:11.5px; font-weight:500; cursor:pointer; color:var(--text-muted); transition:all .13s; background:none; border:none; font-family:var(--font-body); }
@@ -95,18 +121,29 @@ html,body { height:100%; font-family:var(--font-body); background:var(--bg); col
 
 /* Editor pane */
 #editor-pane { display:flex; flex-direction:column; overflow:hidden; min-width:0; width:50%; }
-#toolbar { height:var(--toolbar-h); background:#1a1a1a; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 8px; gap:2px; flex-shrink:0; overflow-x:auto; }
+#toolbar { height:var(--toolbar-h); background:var(--toolbar-bg); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 8px; gap:2px; flex-shrink:0; overflow-x:auto; transition: background 0.2s; }
 #toolbar::-webkit-scrollbar { display:none; }
 .tb-btn { background:none; border:none; color:var(--text-muted); cursor:pointer; height:26px; padding:0 7px; border-radius:5px; font-size:13px; font-family:var(--font-body); display:grid; place-items:center; transition:background .13s,color .13s; white-space:nowrap; flex-shrink:0; }
 .tb-btn:hover { background:var(--surface2); color:var(--text); }
 .tb-sep { width:1px; height:18px; background:var(--border); margin:0 3px; flex-shrink:0; }
-#editor { flex:1; resize:none; border:none; outline:none; background:#1e1e1e; color:#d4d4d4; font-family:var(--font-code); font-size:13.5px; line-height:1.7; padding:20px 24px; overflow-y:auto; tab-size:2; caret-color:var(--accent2); }
+#editor { flex:1; resize:none; border:none; outline:none; background:var(--surface); color:var(--text); font-family:var(--font-code); font-size:13.5px; line-height:1.7; padding:20px 24px; overflow-y:auto; tab-size:2; caret-color:var(--accent2); transition: background 0.2s, color 0.2s; }
 #editor::-webkit-scrollbar { width:5px; }
 #editor::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
 #editor::selection { background:rgba(16,163,127,.25); }
 
+/* Theme specific overrides */
+body.theme-light #editor { background: #fff; }
+body.theme-light .code-header { background: #f0f0f0; }
+
+body.theme-eink #editor { background: #fff; border: 1px solid #000; }
+body.theme-eink .code-header { background: #fff; border: 1px solid #000; }
+body.theme-eink .code-block { border: 2px solid #000; }
+body.theme-eink .sb-btn { border: 2px solid #000; color: #000; }
+body.theme-eink .view-tabs { border: 2px solid #000; }
+body.theme-eink .view-tab.active { background: #000; color: #fff; }
+
 /* Preview pane */
-#preview-pane { flex:1; overflow-y:auto; background:var(--bg); min-width:0; }
+#preview-pane { flex:1; overflow-y:auto; background:var(--bg); min-width:0; transition: background 0.2s; }
 #preview-pane::-webkit-scrollbar { width:5px; }
 #preview-pane::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
 #preview { max-width:720px; margin:0 auto; padding:28px 28px 60px; }
@@ -120,27 +157,57 @@ html,body { height:100%; font-family:var(--font-body); background:var(--bg); col
 .md p { font-size:15px; line-height:1.85; margin-bottom:.9em; }
 .md a { color:var(--accent2); text-decoration:none; border-bottom:1px solid rgba(25,195,125,.3); transition:border-color .13s; }
 .md a:hover { border-bottom-color:var(--accent2); }
-.md strong { font-weight:600; color:#fff; }
-.md em { font-style:italic; color:#d8d8d8; }
+.md strong { font-weight:600; color:var(--text); }
+.md em { font-style:italic; color:var(--text); opacity:0.9; }
 .md ul,.md ol { padding-left:1.5em; margin-bottom:.9em; }
 .md li { font-size:15px; line-height:1.8; margin-bottom:.25em; }
 .md li::marker { color:var(--accent); }
-.md blockquote { border-left:3px solid var(--accent); margin:1em 0; padding:.5em 1.1em; background:rgba(16,163,127,.07); border-radius:0 6px 6px 0; color:var(--text-muted); font-style:italic; }
+.md blockquote { border-left:3px solid var(--accent); margin:1em 0; padding:.5em 1.1em; background:rgba(16,163,127,.07); border-radius:0 6px 6px 0; color:var(--text); opacity:0.8; font-style:italic; }
 .md hr { border:none; border-top:1px solid var(--border); margin:1.8em 0; }
 .md img { max-width:100%; border-radius:7px; margin:.8em 0; }
 .md table { width:100%; border-collapse:collapse; margin:1em 0; font-size:14px; }
 .md thead tr { background:var(--surface); }
-.md th { padding:9px 13px; text-align:left; font-weight:600; font-size:12.5px; color:var(--text-muted); border-bottom:1px solid var(--border); }
+.md th { padding:9px 13px; text-align:left; font-weight:600; font-size:12.5px; color:var(--text); border-bottom:1px solid var(--border); }
 .md td { padding:9px 13px; border-bottom:1px solid var(--border); }
 .md tr:last-child td { border-bottom:none; }
 .md tr:hover td { background:rgba(255,255,255,.025); }
-.md code:not(pre code) { font-family:var(--font-code); font-size:13px; background:var(--surface2); color:#e0c080; padding:2px 6px; border-radius:4px; border:1px solid var(--border); }
+.md code:not(pre code) { font-family:var(--font-code); font-size:13px; background:var(--surface2); color:var(--accent2); padding:2px 6px; border-radius:4px; border:1px solid var(--border); }
 .code-block { margin:1em 0; border-radius:9px; overflow:hidden; border:1px solid var(--border); }
 .code-header { display:flex; align-items:center; justify-content:space-between; padding:7px 13px; background:#252525; border-bottom:1px solid var(--border); }
 .code-lang { font-size:11px; color:var(--text-muted); font-family:var(--font-code); }
 .copy-btn { font-size:11px; padding:2px 9px; background:none; border:1px solid var(--border); border-radius:4px; color:var(--text-muted); cursor:pointer; font-family:var(--font-body); transition:all .13s; }
 .copy-btn:hover { background:var(--surface); color:var(--text); }
 .copy-btn.copied { color:var(--accent2); border-color:var(--accent); }
+
+/* Theme specific preview overrides */
+body:not(.theme-light):not(.theme-eink) .md strong { color: #ffffff; font-weight: 600; }
+
+body.theme-light .md strong { color: #000; font-weight: 600; }
+body.theme-light .md a { color: var(--accent2); font-weight: 500; }
+body.theme-light .md code:not(pre code) { background: #eee; color: #b71c1c; border-color: #ddd; font-weight: 500; }
+body.theme-light .code-header { background: #e0e0e0; border-color: #ccc; }
+body.theme-light .code-lang { color: #222; font-weight: 500; }
+body.theme-light .copy-btn { border-color: #aaa; color: #222; font-weight: 500; }
+body.theme-light .md pre code { background: #fdfdfd !important; color: #24292e !important; }
+/* Light mode hljs overrides (GitHub Light Style) */
+body.theme-light .hljs-keyword, body.theme-light .hljs-selector-tag { color: #d73a49 !important; font-weight: bold; }
+body.theme-light .hljs-string, body.theme-light .hljs-attr { color: #032f62 !important; }
+body.theme-light .hljs-title, body.theme-light .hljs-section { color: #6f42c1 !important; font-weight: bold; }
+body.theme-light .hljs-comment { color: #6a737d !important; }
+body.theme-light .hljs-built_in { color: #a54000 !important; font-weight: bold; } /* print, len, etc */
+body.theme-light .hljs-params, body.theme-light .hljs-variable { color: #823200 !important; } /* (name), variable */
+body.theme-light .hljs-number { color: #005cc5 !important; }
+
+body.theme-eink .md strong { color: #000; font-weight: 800; }
+body.theme-eink .md code:not(pre code) { background: #fff; color: #000; border: 1px solid #000; font-weight: bold; }
+body.theme-eink .code-header { background: #fff; border-color: #000; }
+body.theme-eink .code-lang { color: #000; font-weight: bold; }
+body.theme-eink .copy-btn { border: 2px solid #000; color: #000; font-weight: bold; }
+body.theme-eink .md pre code { background: #fff !important; color: #000 !important; }
+/* E-ink hljs overrides */
+body.theme-eink .hljs-keyword, body.theme-eink .hljs-string, body.theme-eink .hljs-title, 
+body.theme-eink .hljs-built_in, body.theme-eink .hljs-params { color: #000 !important; font-weight: bold; text-decoration: underline; }
+
 .md pre { margin:0 !important; }
 .md pre code { font-family:var(--font-code) !important; font-size:13px !important; line-height:1.65 !important; padding:15px !important; display:block; overflow-x:auto; background:transparent !important; }
 .md input[type=checkbox] { accent-color:var(--accent); margin-right:6px; }
@@ -237,6 +304,11 @@ html,body { height:100%; font-family:var(--font-body); background:var(--bg); col
         <span class="unsaved-dot" id="unsaved-dot"></span>
       </div>
       <div class="header-right">
+        <select id="theme-select" class="theme-select">
+          <option value="dark">🌑 黑底</option>
+          <option value="light">☀️ 白底</option>
+          <option value="eink">📖 E-Ink</option>
+        </select>
         <span class="badge" id="word-count" style="display:none"></span>
         <div class="view-tabs">
           <button class="view-tab" id="tab-edit">編輯</button>
@@ -820,6 +892,18 @@ function restore() {
 }
 setInterval(persist, 3000);
 window.addEventListener('beforeunload', persist);
+
+// ── Theme ─────────────────────────────────────────────
+const themeSelect = document.getElementById('theme-select');
+function setTheme(theme) {
+  document.body.classList.remove('theme-light', 'theme-eink');
+  if (theme === 'light') document.body.classList.add('theme-light');
+  else if (theme === 'eink') document.body.classList.add('theme-eink');
+  themeSelect.value = theme;
+  localStorage.setItem('md-theme', theme);
+}
+themeSelect.addEventListener('change', e => setTheme(e.target.value));
+setTheme(localStorage.getItem('md-theme') || 'dark');
 
 // ── Init ──────────────────────────────────────────────
 if (!restore()) {
