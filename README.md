@@ -11,15 +11,17 @@
 | **Markdown 編輯器** | 左側編輯 Markdown，右側即時預覽 |
 | **分割 / 編輯 / 預覽模式** | 可在「編輯」、「分割」、「預覽」三種模式切換 |
 | **ChatGPT 風格預覽** | 標題、段落、清單、引用、表格與程式碼區塊採用深色 ChatGPT 風格 |
-| **多檔管理** | 側欄列出已開啟的 `.md` / `.markdown` / `.txt` 檔，可快速切換或刪除 |
+| **多檔管理** | 側欄列出已開啟的 `.md` / `.markdown` 檔，可快速切換或刪除 |
 | **新建 / 開檔 / 另存** | 可新建文件、開啟本機 Markdown 檔、另存為 `.md` |
-| **拖曳開檔** | 可直接把 `.md`、`.markdown`、`.txt` 拖進頁面 |
+| **拖曳開檔** | 可直接把 `.md`、`.markdown` 拖進頁面 |
 | **工具列** | 可快速插入粗體、斜體、刪除線、標題、清單、待辦、引用、程式碼、連結、圖片、表格與分隔線 |
 | **程式碼高亮** | 使用 highlight.js 與 `github-dark` 主題，並提供程式碼「複製」按鈕 |
 | **字數統計** | 支援 CJK 字元與英文詞統計 |
 | **自動儲存** | 每 3 秒自動儲存目前文件到 LocalStorage |
 | **列印模式** | 列印時自動隱藏側欄、header、編輯區與分隔線，輸出乾淨預覽內容 |
 | **PWA 安裝** | 支援安裝到桌面或手機主畫面 |
+| **桌面檔案關聯** | 在支援的 Chromium 桌面瀏覽器中，安裝後可從作業系統直接用 MD Editor 開啟 `.md` / `.markdown` |
+| **分享到 MD Editor** | 在支援 Web Share Target 的裝置上，可從系統分享面板把 `.md` / `.markdown` 分享到 MD Editor |
 | **離線使用** | 透過 Service Worker 快取必要資源，安裝後可離線開啟 |
 | **深色主題** | 預設深色背景 `#212121`，accent 使用 ChatGPT 綠 `#10a37f` |
 
@@ -29,9 +31,14 @@
 
 ```text
 MDeditor/
-├── index.html      # 主程式，包含 UI、Markdown 編輯、預覽、PWA manifest 注入與 Service Worker 註冊
-├── manifest.json   # 靜態 manifest fallback；正常情況下會被 index.html 產生的動態 manifest 取代
-└── sw.js           # Service Worker，負責離線快取
+├── index.html                    # 主程式，包含 UI、Markdown 編輯、預覽與 PWA 啟動邏輯
+├── manifest.json                 # PWA manifest，註冊檔案關聯與 share target
+├── icon.svg                      # PWA icon
+├── sw.js                         # Service Worker，負責離線快取與分享資料轉送
+├── scripts/mdeditor-serve.sh     # 啟動本機 HTTP server
+├── scripts/mdeditor-systemd-user.sh
+│                                 # 安裝/啟停 systemd --user 服務
+└── systemd/user/                 # user-mode systemd units
 ```
 
 ---
@@ -62,6 +69,54 @@ npx serve .
 
 ---
 
+## 使用方式
+
+### 編輯器內操作
+
+1. 點 `＋ 新建文件` 建立新文件。
+2. 點 `📂 開啟 Markdown 檔` 匯入 `.md` 或 `.markdown`。
+3. 可直接把 `.md` / `.markdown` 拖進頁面。
+4. 用上方工具列快速插入標題、清單、程式碼、連結、表格與數學式。
+5. 點 `💾 另存為 .md` 匯出；若瀏覽器支援 File System Access API，會直接回寫原檔。
+
+### PWA / 檔案關聯更新
+
+如果你之前安裝過舊版 MD Editor，而且它曾經關聯過 `.txt`：
+
+1. 先移除舊版已安裝的 PWA。
+2. 重新用 Chrome 或 Edge 開啟 `http://localhost:8080` 或 `https://MDeditor.kennylab.online`。
+3. 重新安裝 PWA。
+
+這樣作業系統與瀏覽器才會重新註冊新的檔案關聯，只保留 `.md` / `.markdown`。
+
+### systemd user mode 操作
+
+第一次安裝：
+
+```bash
+cd MDeditor
+chmod +x scripts/mdeditor-serve.sh scripts/mdeditor-systemd-user.sh
+./scripts/mdeditor-systemd-user.sh install
+```
+
+日常管理：
+
+```bash
+./scripts/mdeditor-systemd-user.sh status
+./scripts/mdeditor-systemd-user.sh start
+./scripts/mdeditor-systemd-user.sh restart
+./scripts/mdeditor-systemd-user.sh stop
+./scripts/mdeditor-systemd-user.sh logs
+```
+
+只補建 Cloudflare DNS route：
+
+```bash
+./scripts/mdeditor-systemd-user.sh route-dns
+```
+
+---
+
 ## 安裝成 PWA
 
 啟動本機 server 後，用 Chrome 或 Edge 開啟頁面。
@@ -77,6 +132,25 @@ http://localhost:8080
 ```
 
 點擊後即可安裝到桌面或主畫面。
+
+### 直接從作業系統開啟 `.md`
+
+在支援 `file_handlers` 的 Chromium 桌面瀏覽器中，重新安裝或更新 PWA 後，作業系統的「開啟方式 / Open with」會出現 `MD Editor`，可直接把 `.md`、`.markdown` 交給程式開啟。
+
+注意：
+
+- Windows / macOS / Linux 主要取決於 Chrome 或 Edge 是否支援 PWA File Handling。
+- Android 目前不保證提供同等的「點檔案直接選 PWA 開啟」整合；可改用 App 內開檔、拖放，或從分享面板導入作為備案。
+
+### Android 分享到 MD Editor
+
+安裝或重新安裝 PWA 後，在 Android 的檔案管理器、筆記 App 或其他支援分享檔案的 App 中，選擇分享 `.md`、`.markdown` 檔案時，若瀏覽器與系統支援 Web Share Target，分享面板會出現 `MD Editor`。
+
+限制：
+
+- 這依賴安裝型 PWA 與 Chromium 的 Web Share Target 支援。
+- 第一次更新 `manifest.json` 後，通常需要移除舊版 PWA 再重新安裝，系統才會重新註冊分享目標。
+- 目前分享進來的檔案會以新文件方式匯入編輯器，不會直接回寫來源 App。
 
 ---
 
@@ -122,8 +196,6 @@ https://example.trycloudflare.com
 ```
 
 用手機或其他電腦開啟這個 HTTPS 網址，就可以測試並安裝 PWA。
-
----
 
 ## 使用 ngrok
 
@@ -265,37 +337,13 @@ LocalStorage 儲存限制：
 
 ## PWA Icon 與 Manifest 設計
 
-`index.html` 一開始仍保留：
+目前改用靜態檔案：
 
-```html
-<link rel="manifest" href="manifest.json" />
-<link rel="apple-touch-icon" id="apple-icon" />
-```
+- `manifest.json` 定義 PWA metadata、`.md` / `.markdown` 檔案關聯與 Web Share Target
+- `icon.svg` 作為安裝圖示
+- `sw.js` 負責離線快取，並把 share target 傳入的內容暫存後轉交給 `index.html`
 
-頁面載入後，`injectManifest()` 會執行以下流程：
-
-```text
-index.html 載入
-  → injectManifest() 執行
-    → makeIconBlob(192) / makeIconBlob(512)
-    → Canvas 產生 192px 與 512px PNG icon
-    → 設定 apple-touch-icon
-    → 建立新的 manifest JSON
-    → 用 Blob URL 產生動態 manifest
-    → 覆蓋 <link rel="manifest"> 的 href
-```
-
-正常情況下，瀏覽器最後會使用動態產生的 manifest。
-
-`manifest.json` 主要是 fallback。它現在只保留基本 metadata，不再引用不存在的 icon 檔；正常情況下，實際安裝仍優先使用頁面動態產生的 icon 與 manifest。可能會被使用的情況包括：
-
-1. JavaScript 尚未執行完成前，瀏覽器先讀取原本的 `manifest.json`。
-2. `injectManifest()` 執行失敗，例如 Canvas、Blob URL 或 JavaScript 被瀏覽器限制。
-3. 使用者關閉 JavaScript。
-4. 瀏覽器或 PWA 檢查工具直接讀取原始 `<link rel="manifest" href="manifest.json">`。
-5. Service Worker 預先快取清單中仍包含 `./manifest.json`，因此離線快取時也會保留這個 fallback 檔案。
-
-如果確定只使用支援動態 manifest 的瀏覽器，也可以把 `manifest.json` 視為備用檔；但保留它比較安全。
+如果更新了 `manifest.json` 的檔案關聯、分享目標或 icon，已安裝的 PWA 通常需要移除再重新安裝，系統才會完整套用新設定。
 
 ---
 
@@ -312,5 +360,3 @@ index.html 載入
 - 這不是完整的 HTML 白名單 sanitizer；若未來要支援更複雜的內嵌 HTML，建議改用成熟函式庫，例如 `DOMPurify`。
 - 預覽允許 `data:image/...`，是為了保留常見 Markdown 內嵌圖片用法；如果部署情境更嚴格，可以再收緊。
 - Service Worker 目前主要服務靜態資源離線快取，不處理更進階的版本控管、內容驗證或資料同步。
-
-
