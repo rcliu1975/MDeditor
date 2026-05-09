@@ -1,10 +1,12 @@
 // Service Worker — MDeditor (with MathJax support)
-const CACHE_NAME = 'md-editor-v2';
+const CACHE_NAME = 'md-editor-v3';
+const SHARED_DATA_URL = './__shared_target__';
 
 const PRECACHE = [
   './',
   './index.html',
   './manifest.json',
+  './icon.svg',
   'https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap',
   'https://cdn.jsdelivr.net/npm/marked@12/marked.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css',
@@ -12,6 +14,19 @@ const PRECACHE = [
   // MathJax 3 入口（其餘子模組由 MathJax 自身動態載入後也會被 runtime cache 攔截）
   'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js'
 ];
+
+async function storeSharedPayload(payload) {
+  const cache = await caches.open(CACHE_NAME);
+  await cache.put(
+    new Request(SHARED_DATA_URL),
+    new Response(JSON.stringify(payload), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store'
+      }
+    })
+  );
+}
 
 // Install：預先快取
 self.addEventListener('install', event => {
@@ -39,9 +54,34 @@ self.addEventListener('activate', event => {
 
 // Fetch：cache-first，未命中則網路請求並存入快取
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+
+  if (event.request.method === 'POST' && url.pathname.endsWith('/share-target')) {
+    event.respondWith((async () => {
+      const formData = await event.request.formData();
+      const sharedFiles = [];
+      for (const entry of formData.getAll('files')) {
+        if (!(entry instanceof File)) continue;
+        sharedFiles.push({
+          name: entry.name || 'shared.md',
+          type: entry.type || 'text/plain',
+          text: await entry.text()
+        });
+      }
+      await storeSharedPayload({
+        title: formData.get('title') || '',
+        text: formData.get('text') || '',
+        url: formData.get('url') || '',
+        files: sharedFiles,
+        receivedAt: Date.now()
+      });
+      return Response.redirect(new URL('./index.html?share-target=1', self.registration.scope), 303);
+    })());
+    return;
+  }
+
   // 只處理 GET，略過 chrome-extension 等非 http(s) scheme
   if (event.request.method !== 'GET') return;
-  const url = new URL(event.request.url);
   if (!['http:', 'https:'].includes(url.protocol)) return;
 
   event.respondWith(

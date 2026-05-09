@@ -1,0 +1,12 @@
+[Unit]
+Description=MDeditor local HTTP server
+
+[Service]
+Type=simple
+WorkingDirectory=/home/roger/WorkSpace/MDeditor
+ExecStart=/home/roger/WorkSpace/MDeditor/scripts/mdeditor-serve.sh
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=mdeditor.target

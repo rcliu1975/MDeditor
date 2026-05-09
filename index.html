@@ -9,7 +9,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self'; manifest-src 'self' blob:; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none';" />
 <title>MD Editor</title>
 <link rel="manifest" href="manifest.json" />
-<link rel="apple-touch-icon" id="apple-icon" />
+<link rel="apple-touch-icon" href="icon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
@@ -290,9 +290,9 @@ body.theme-eink .hljs-built_in, body.theme-eink .hljs-params { color: #000 !impo
     <div id="file-list"></div>
     <div class="sidebar-footer">
       <button class="sb-btn primary" id="new-btn">＋ 新建文件</button>
-      <button class="sb-btn" id="open-btn">📂 開啟 .md 檔</button>
+      <button class="sb-btn" id="open-btn">📂 開啟 Markdown 檔</button>
       <button class="sb-btn" id="save-btn">💾 另存為 .md</button>
-      <input type="file" id="file-input" accept=".md,.markdown,.txt" multiple hidden />
+      <input type="file" id="file-input" accept=".md,.markdown" multiple hidden />
     </div>
   </nav>
 
@@ -363,6 +363,8 @@ body.theme-eink .hljs-built_in, body.theme-eink .hljs-params { color: #000 !impo
 </div>
 
 <script>
+const SHARED_DATA_URL = './__shared_target__';
+
 // ────────────────────────────────────────────────────────────
 // 數學式保護層
 // 在送給 marked 之前，先把 $$...$$、$...$、\[...\]、\(...\)
@@ -451,8 +453,6 @@ const wcEl       = document.getElementById('word-count');
 const udot       = document.getElementById('unsaved-dot');
 const workspace  = document.getElementById('workspace');
 const fileInputEl = document.getElementById('file-input');
-let runtimeIconUrls = [];
-let runtimeManifestUrl = null;
 
 // ── Scroll Sync ──────────────────────────────────────
 let isSyncingEditorScroll = false;
@@ -562,6 +562,43 @@ function newFile(name = '未命名文件', content = '', handle = null) {
   buildFileList();
   activateFile(id);
 }
+async function importFileObjects(fileObjects) {
+  for (const file of fileObjects) {
+    const content = await file.text();
+    newFile(file.name, content);
+  }
+}
+async function importSharedPayload() {
+  const cache = await caches.open('md-editor-v3');
+  const response = await cache.match(SHARED_DATA_URL);
+  if (!response) return false;
+
+  const payload = await response.json();
+  await cache.delete(SHARED_DATA_URL);
+
+  if (Array.isArray(payload.files) && payload.files.length) {
+    for (const file of payload.files) {
+      newFile(file.name || 'shared.md', file.text || '');
+    }
+    return true;
+  }
+
+  const parts = [payload.title, payload.text, payload.url].filter(Boolean);
+  if (parts.length) {
+    newFile('shared.md', parts.join('\n\n'));
+    return true;
+  }
+
+  return false;
+}
+async function importFileHandles(handles) {
+  for (const handle of handles) {
+    if (!handle || handle.kind !== 'file') continue;
+    const file = await handle.getFile();
+    const content = await file.text();
+    newFile(file.name, content, handle);
+  }
+}
 function buildFileList() {
   fileListEl.innerHTML = '';
   const keys = Object.keys(files);
@@ -610,7 +647,7 @@ document.getElementById('open-btn').addEventListener('click', async () => {
   if ('showOpenFilePicker' in window) {
     try {
       const handles = await window.showOpenFilePicker({
-        types: [{ description: 'Markdown Files', accept: { 'text/markdown': ['.md'], 'text/plain': ['.txt'] } }],
+        types: [{ description: 'Markdown Files', accept: { 'text/markdown': ['.md', '.markdown'] } }],
         multiple: true
       });
       for (const handle of handles) {
@@ -627,11 +664,7 @@ document.getElementById('open-btn').addEventListener('click', async () => {
 });
 
 fileInputEl.addEventListener('change', e => {
-  Array.from(e.target.files).forEach(file => {
-    const r = new FileReader();
-    r.onload = ev => newFile(file.name, ev.target.result);
-    r.readAsText(file);
-  });
+  importFileObjects(Array.from(e.target.files));
   e.target.value = '';
 });
 
@@ -866,18 +899,17 @@ document.getElementById('print-btn').addEventListener('click', () => window.prin
 document.body.addEventListener('dragover', e => e.preventDefault());
 document.body.addEventListener('drop', e => {
   e.preventDefault();
-  Array.from(e.dataTransfer.files).forEach(file => {
-    if (!file.name.match(/\.(md|markdown|txt)$/i)) return;
-    const r = new FileReader();
-    r.onload = ev => newFile(file.name, ev.target.result);
-    r.readAsText(file);
-  });
+  const droppedFiles = Array.from(e.dataTransfer.files).filter(file => file.name.match(/\.(md|markdown)$/i));
+  importFileObjects(droppedFiles);
 });
 
 // ── LocalStorage auto-save ────────────────────────────
 function persist() {
   if (activeId && files[activeId]) files[activeId].content = editorEl.value;
-  try { localStorage.setItem('md-editor-v1', JSON.stringify({ files, activeId, idCounter })); } catch {}
+  const serializableFiles = Object.fromEntries(
+    Object.entries(files).map(([id, file]) => [id, { name: file.name, content: file.content }])
+  );
+  try { localStorage.setItem('md-editor-v1', JSON.stringify({ files: serializableFiles, activeId, idCounter })); } catch {}
 }
 function restore() {
   try {
@@ -973,44 +1005,21 @@ hello("世界")
 `);
 }
 
-// ── PWA icon & manifest ───────────────────────────────
-function makeIconBlob(size) {
-  const c = document.createElement('canvas'); c.width = c.height = size;
-  const ctx = c.getContext('2d');
-  const g = ctx.createLinearGradient(0, 0, size, size);
-  g.addColorStop(0, '#10a37f'); g.addColorStop(1, '#0d7a60'); ctx.fillStyle = g;
-  const r = size * .22;
-  ctx.beginPath();
-  ctx.moveTo(r, 0); ctx.lineTo(size - r, 0); ctx.quadraticCurveTo(size, 0, size, r);
-  ctx.lineTo(size, size - r); ctx.quadraticCurveTo(size, size, size - r, size);
-  ctx.lineTo(r, size); ctx.quadraticCurveTo(0, size, 0, size - r);
-  ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.font = `bold ${size * .52}px sans-serif`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('M', size / 2, size / 2 + size * .03);
-  return new Promise(res => c.toBlob(b => res(URL.createObjectURL(b)), 'image/png'));
+if (location.search.includes('share-target=1') && 'caches' in window) {
+  importSharedPayload().then(imported => {
+    if (!imported) return;
+    history.replaceState({}, '', location.pathname);
+  }).catch(err => console.error('匯入分享內容失敗', err));
 }
-async function injectManifest() {
-  runtimeIconUrls.forEach(URL.revokeObjectURL);
-  if (runtimeManifestUrl) URL.revokeObjectURL(runtimeManifestUrl);
-  const [u192, u512] = await Promise.all([makeIconBlob(192), makeIconBlob(512)]);
-  runtimeIconUrls = [u192, u512];
-  document.getElementById('apple-icon').href = u192;
-  const m = {
-    name: 'MD Editor', short_name: 'MD Editor',
-    description: 'ChatGPT-style Markdown Editor PWA',
-    start_url: location.href.split('?')[0], id: location.origin + '/',
-    display: 'standalone', background_color: '#212121', theme_color: '#212121', orientation: 'any',
-    icons: [
-      { src: u192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-      { src: u512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
-    ]
-  };
-  const blob = new Blob([JSON.stringify(m)], { type: 'application/json' });
-  runtimeManifestUrl = URL.createObjectURL(blob);
-  document.querySelector('link[rel="manifest"]').href = runtimeManifestUrl;
+
+// ── PWA file launch ───────────────────────────────────
+if ('launchQueue' in window && 'files' in LaunchParams.prototype) {
+  launchQueue.setConsumer(async launchParams => {
+    if (!launchParams.files || !launchParams.files.length) return;
+    await importFileHandles(launchParams.files);
+  });
 }
-injectManifest();
+
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>

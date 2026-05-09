@@ -1,0 +1,13 @@
+[Unit]
+Description=Cloudflare Tunnel for MDeditor
+After=network-online.target mdeditor-http.service
+Wants=network-online.target mdeditor-http.service
+
+[Service]
+Type=simple
+ExecStart=/home/roger/bin/cloudflared tunnel --config /home/roger/.cloudflared/config.yml run mdeditor_kennylab-tunnel
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=mdeditor.target
