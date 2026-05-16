@@ -1,6 +1,6 @@
 [Unit]
 Description=MDeditor stack
-Wants=mdeditor-http.service mdeditor-cloudflared.service
+Wants=mdeditor-http.service
 
 [Install]
 WantedBy=default.target

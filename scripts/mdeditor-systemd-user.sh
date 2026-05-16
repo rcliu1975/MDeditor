@@ -7,7 +7,7 @@ UNIT_DST_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
 usage() {
   cat <<'EOF'
-Usage: mdeditor-systemd-user.sh <install|uninstall|start|stop|restart|status|logs|route-dns>
+Usage: mdeditor-systemd-user.sh <install|uninstall|start|stop|restart|status|logs>
 
 Commands:
   install    Install user units and enable them immediately
@@ -17,55 +17,29 @@ Commands:
   restart    Restart MDeditor services
   status     Show service status
   logs       Show recent service logs
-  route-dns  Ensure Cloudflare Tunnel DNS route exists
 EOF
-}
-
-require_cloudflared() {
-  if [[ ! -x "$HOME/bin/cloudflared" ]]; then
-    echo "cloudflared not found at $HOME/bin/cloudflared" >&2
-    exit 1
-  fi
-}
-
-route_dns() {
-  require_cloudflared
-  local output
-  if output="$("$HOME/bin/cloudflared" tunnel route dns mdeditor_kennylab-tunnel MDeditor.kennylab.online 2>&1)"; then
-    printf '%s\n' "$output"
-    return 0
-  fi
-
-  if grep -Fq 'with that host already exists' <<<"$output"; then
-    printf '%s\n' "$output"
-    echo "DNS route already exists; continuing."
-    return 0
-  fi
-
-  printf '%s\n' "$output" >&2
-  return 1
 }
 
 install_units() {
   mkdir -p "${UNIT_DST_DIR}"
   install -m 0644 "${UNIT_SRC_DIR}/mdeditor-http.service" "${UNIT_DST_DIR}/mdeditor-http.service"
-  install -m 0644 "${UNIT_SRC_DIR}/mdeditor-cloudflared.service" "${UNIT_DST_DIR}/mdeditor-cloudflared.service"
   install -m 0644 "${UNIT_SRC_DIR}/mdeditor.target" "${UNIT_DST_DIR}/mdeditor.target"
+  rm -f "${UNIT_DST_DIR}/mdeditor-cloudflared.service"
   systemctl --user daemon-reload
 }
 
 case "${1:-}" in
   install)
-    route_dns
+    systemctl --user disable --now mdeditor-cloudflared.service 2>/dev/null || true
     install_units
     systemctl --user enable --now mdeditor.target
     ;;
   uninstall)
-    systemctl --user disable --now mdeditor.target mdeditor-cloudflared.service mdeditor-http.service || true
+    systemctl --user disable --now mdeditor.target mdeditor-http.service mdeditor-cloudflared.service 2>/dev/null || true
     rm -f \
       "${UNIT_DST_DIR}/mdeditor.target" \
-      "${UNIT_DST_DIR}/mdeditor-cloudflared.service" \
-      "${UNIT_DST_DIR}/mdeditor-http.service"
+      "${UNIT_DST_DIR}/mdeditor-http.service" \
+      "${UNIT_DST_DIR}/mdeditor-cloudflared.service"
     systemctl --user daemon-reload
     ;;
   start)
@@ -78,13 +52,10 @@ case "${1:-}" in
     systemctl --user restart mdeditor.target
     ;;
   status)
-    systemctl --user status mdeditor.target mdeditor-http.service mdeditor-cloudflared.service
+    systemctl --user status mdeditor.target mdeditor-http.service
     ;;
   logs)
-    journalctl --user -u mdeditor-http.service -u mdeditor-cloudflared.service -n 100 --no-pager
-    ;;
-  route-dns)
-    route_dns
+    journalctl --user -u mdeditor-http.service -n 100 --no-pager
     ;;
   *)
     usage
