@@ -21,6 +21,9 @@
 | **列印模式** | 列印時自動隱藏側欄、header、編輯區與分隔線，輸出乾淨預覽內容 |
 | **PWA 安裝** | 支援安裝到桌面或手機主畫面 |
 | **桌面檔案關聯** | 在支援的 Chromium 桌面瀏覽器中，安裝後可從作業系統直接用 MD Editor 開啟 `.md` / `.markdown` |
+| **多視窗 / 多 instance** | 桌面版安裝型 PWA 可同時開多個 MD Editor 視窗，每個視窗各自維持自己的工作區狀態 |
+| **外部變更偵測 / Reload** | 以檔案 handle 開啟的文件若被外部修改，編輯器會自動提示 reload |
+| **開檔 history 管理** | 支援清空目前開啟清單，並避免同一個檔案在 history 中重複出現 |
 | **分享到 MD Editor** | 在支援 Web Share Target 的裝置上，可從系統分享面板把 `.md` / `.markdown` 分享到 MD Editor |
 | **離線使用** | 透過 Service Worker 快取必要資源，安裝後可離線開啟 |
 | **深色主題** | 預設深色背景 `#212121`，accent 使用 ChatGPT 綠 `#10a37f` |
@@ -88,6 +91,12 @@ npx serve .
 3. 重新安裝 PWA。
 
 這樣作業系統與瀏覽器才會重新註冊新的檔案關聯，只保留 `.md` / `.markdown`。
+
+### 多 instance 行為
+
+- 安裝型 PWA 在桌面 Chromium 瀏覽器中，現在會用新視窗處理新的啟動，而不是強制導回既有視窗。
+- 每個視窗的文件列表與編輯內容會存在各自的 `sessionStorage`，避免多個視窗互相覆蓋暫存工作區。
+- 如果你先前已安裝舊版單 instance PWA，請移除後重新安裝，讓新的 manifest 設定生效。
 
 ### systemd user mode 操作
 

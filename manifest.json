@@ -24,7 +24,7 @@
       "accept": {
         "text/markdown": [".md", ".markdown"]
       },
-      "launch_type": "single-client"
+      "launch_type": "multiple-clients"
     }
   ],
   "share_target": {
@@ -44,6 +44,6 @@
     }
   },
   "launch_handler": {
-    "client_mode": "focus-existing"
+    "client_mode": "navigate-new"
   }
 }
