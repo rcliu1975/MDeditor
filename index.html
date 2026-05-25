@@ -196,6 +196,8 @@ body.theme-light .code-header { background: #e0e0e0; border-color: #ccc; }
 body.theme-light .code-lang { color: #222; font-weight: 500; }
 body.theme-light .copy-btn { border-color: #aaa; color: #222; font-weight: 500; }
 body.theme-light .reload-notice { background: rgba(176, 0, 32, 0.08); color: #a00020; border-color: rgba(176, 0, 32, 0.2); }
+body.theme-light #drop-overlay { background: rgba(14, 138, 108, 0.08); border-color: rgba(14, 138, 108, 0.7); }
+body.theme-light .drop-overlay-content { background: rgba(255,255,255,.96); border-color: rgba(14, 138, 108, 0.25); }
 body.theme-light .md pre code { background: #fdfdfd !important; color: #24292e !important; }
 /* Light mode hljs overrides (GitHub Light Style) */
 body.theme-light .hljs-keyword, body.theme-light .hljs-selector-tag { color: #d73a49 !important; font-weight: bold; }
@@ -212,6 +214,8 @@ body.theme-eink .code-header { background: #fff; border-color: #000; }
 body.theme-eink .code-lang { color: #000; font-weight: bold; }
 body.theme-eink .copy-btn { border: 2px solid #000; color: #000; font-weight: bold; }
 body.theme-eink .reload-notice { background: #fff; color: #000; border: 2px solid #000; }
+body.theme-eink #drop-overlay { background: rgba(255,255,255,.92); border: 3px dashed #000; }
+body.theme-eink .drop-overlay-content { background: #fff; border: 2px solid #000; color: #000; box-shadow:none; }
 body.theme-eink .md pre code { background: #fff !important; color: #000 !important; }
 /* E-ink hljs overrides */
 body.theme-eink .hljs-keyword, body.theme-eink .hljs-string, body.theme-eink .hljs-title, 
@@ -245,6 +249,11 @@ body.theme-eink .hljs-subst, body.theme-eink .hljs-variable, body.theme-eink .hl
 /* Sidebar Overlay */
 #sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:95; backdrop-filter:blur(2px); }
 #sidebar-overlay.show { display:block; }
+#drop-overlay { position:fixed; inset:18px; border:2px dashed rgba(16,163,127,.8); border-radius:18px; background:rgba(16,163,127,.12); display:none; align-items:center; justify-content:center; z-index:110; pointer-events:none; }
+#drop-overlay.show { display:flex; }
+.drop-overlay-content { padding:24px 28px; border-radius:16px; background:rgba(24,24,24,.92); border:1px solid rgba(16,163,127,.35); color:var(--text); text-align:center; box-shadow:var(--shadow); }
+.drop-overlay-title { font-size:18px; font-weight:600; margin-bottom:6px; }
+.drop-overlay-subtitle { font-size:13px; color:var(--text-muted); }
 
 /* View modes */
 #workspace.editor-only #preview-pane,
@@ -295,6 +304,12 @@ body.theme-eink .hljs-subst, body.theme-eink .hljs-variable, body.theme-eink .hl
 <body>
 <div id="app">
   <div id="sidebar-overlay"></div>
+  <div id="drop-overlay">
+    <div class="drop-overlay-content">
+      <div class="drop-overlay-title">Drop files to open</div>
+      <div class="drop-overlay-subtitle">Supports .md, .markdown, and .txt</div>
+    </div>
+  </div>
   <nav id="sidebar">
     <div class="sidebar-header">
       <div class="logo">M</div>
@@ -303,11 +318,10 @@ body.theme-eink .hljs-subst, body.theme-eink .hljs-variable, body.theme-eink .hl
     </div>
     <div id="file-list"></div>
     <div class="sidebar-footer">
-      <button class="sb-btn primary" id="new-btn">＋ 新建文件</button>
-      <button class="sb-btn" id="open-btn">📂 開啟 Markdown 檔</button>
-      <button class="sb-btn" id="save-btn">💾 另存為 .md</button>
-      <button class="sb-btn" id="clear-history-btn">🗑 清空 history</button>
-      <input type="file" id="file-input" accept=".md,.markdown" multiple hidden />
+      <button class="sb-btn primary" id="open-btn">📂 Open Markdown</button>
+      <button class="sb-btn" id="save-btn">💾 Save</button>
+      <button class="sb-btn" id="clear-history-btn">🗑 Clear History</button>
+      <input type="file" id="file-input" accept=".md,.markdown,.txt,text/markdown,text/plain" multiple hidden />
     </div>
   </nav>
 
@@ -315,20 +329,20 @@ body.theme-eink .hljs-subst, body.theme-eink .hljs-variable, body.theme-eink .hl
     <header id="header">
       <button class="icon-btn" id="sidebar-toggle">☰</button>
       <div id="doc-title-wrap">
-        <span id="doc-title">未命名文件</span>
+        <span id="doc-title">Untitled</span>
         <span class="unsaved-dot" id="unsaved-dot"></span>
       </div>
       <div class="header-right">
         <div class="reload-notice" id="reload-notice">
-          <span id="reload-text">檔案已變更</span>
+          <span id="reload-text">File changed</span>
           <button type="button" id="reload-btn">Reload</button>
         </div>
         <select id="theme-select" class="theme-select">
-          <option value="dark">🌑 黑底</option>
-          <option value="light">☀️ 白底</option>
+          <option value="dark">🌑 Dark</option>
+          <option value="light">☀️ Light</option>
           <option value="eink">📖 E-Ink</option>
         </select>
-        <select id="font-size-select" class="font-size-select" title="字型大小">
+        <select id="font-size-select" class="font-size-select" title="Font Size">
           <option value="0.9">A-</option>
           <option value="1" selected>A</option>
           <option value="1.15">A+</option>
@@ -336,11 +350,11 @@ body.theme-eink .hljs-subst, body.theme-eink .hljs-variable, body.theme-eink .hl
         </select>
         <span class="badge" id="word-count" style="display:none"></span>
         <div class="view-tabs">
-          <button class="view-tab" id="tab-edit">編輯</button>
-          <button class="view-tab active" id="tab-split">分割</button>
-          <button class="view-tab" id="tab-preview">預覽</button>
+          <button class="view-tab" id="tab-edit">Edit</button>
+          <button class="view-tab active" id="tab-split">Split</button>
+          <button class="view-tab" id="tab-preview">Preview</button>
         </div>
-        <button class="icon-btn" id="print-btn" title="列印">⎙</button>
+        <button class="icon-btn" id="print-btn" title="Print">⎙</button>
       </div>
     </header>
 
@@ -353,34 +367,33 @@ body.theme-eink .hljs-subst, body.theme-eink .hljs-variable, body.theme-eink .hl
       <button class="tb-btn" data-action="h2">H2</button>
       <button class="tb-btn" data-action="h3">H3</button>
       <div class="tb-sep"></div>
-      <button class="tb-btn" data-action="ul">• 清單</button>
-      <button class="tb-btn" data-action="ol">1. 清單</button>
-      <button class="tb-btn" data-action="task">☐ 待辦</button>
+      <button class="tb-btn" data-action="ul">• List</button>
+      <button class="tb-btn" data-action="ol">1. List</button>
+      <button class="tb-btn" data-action="task">☐ Task</button>
       <div class="tb-sep"></div>
-      <button class="tb-btn" data-action="quote">❝ 引用</button>
+      <button class="tb-btn" data-action="quote">❝ Quote</button>
       <button class="tb-btn" data-action="code">`code`</button>
-      <button class="tb-btn" data-action="codeblock">``` 區塊</button>
+      <button class="tb-btn" data-action="codeblock">``` Block</button>
       <div class="tb-sep"></div>
-      <button class="tb-btn" data-action="link">🔗 連結</button>
-      <button class="tb-btn" data-action="image">🖼 圖片</button>
-      <button class="tb-btn" data-action="table">⊞ 表格</button>
-      <button class="tb-btn" data-action="hr">─ 分隔</button>
+      <button class="tb-btn" data-action="link">🔗 Link</button>
+      <button class="tb-btn" data-action="image">🖼 Image</button>
+      <button class="tb-btn" data-action="table">⊞ Table</button>
+      <button class="tb-btn" data-action="hr">─ Rule</button>
       <div class="tb-sep"></div>
-      <!-- 新增：數學式快速插入按鈕 -->
-      <button class="tb-btn" data-action="math-inline" title="行內數學式 $...$">∑ 行內</button>
-      <button class="tb-btn" data-action="math-block" title="獨立數學式 $$...$$">∫ 區塊</button>
+      <button class="tb-btn" data-action="math-inline" title="Inline math $...$">∑ Inline</button>
+      <button class="tb-btn" data-action="math-block" title="Block math $$...$$">∫ Block</button>
     </div>
 
     <div id="workspace">
       <div id="editor-pane">
-        <textarea id="editor" spellcheck="false" placeholder="在這裡輸入 Markdown…"></textarea>
+        <textarea id="editor" spellcheck="false" placeholder="Write Markdown here…"></textarea>
       </div>
 
       <div id="divider"></div>
 
       <div id="preview-pane">
         <div id="preview" class="md">
-          <div class="empty-preview"><div class="empty-icon">✍️</div><span>開始輸入即可即時預覽</span></div>
+          <div class="empty-preview"><div class="empty-icon">✍️</div><span>Start typing to preview live</span></div>
         </div>
       </div>
     </div>
@@ -573,9 +586,11 @@ const reloadNoticeEl = document.getElementById('reload-notice');
 const reloadTextEl = document.getElementById('reload-text');
 const reloadBtnEl = document.getElementById('reload-btn');
 const clearHistoryBtnEl = document.getElementById('clear-history-btn');
+const dropOverlayEl = document.getElementById('drop-overlay');
 
 let fileWatchTimer = null;
 let fileWatchBusy = false;
+let dragDepth = 0;
 
 // ── Scroll Sync ──────────────────────────────────────
 let isSyncingEditorScroll = false;
@@ -679,7 +694,7 @@ document.addEventListener('mousemove', e => {
 document.addEventListener('mouseup', () => { dragging = false; divider.classList.remove('dragging'); });
 
 // ── Files ─────────────────────────────────────────────
-function newFile(name = '未命名文件', content = '', handle = null) {
+function newFile(name = 'Untitled', content = '', handle = null) {
   const id = 'f' + (++idCounter);
   files[id] = {
     name,
@@ -789,17 +804,17 @@ function updateReloadNotice() {
   const activeFile = activeId ? files[activeId] : null;
   if (!activeFile?.externallyModified) {
     reloadNoticeEl.classList.remove('show');
-    reloadTextEl.textContent = '檔案已變更';
+    reloadTextEl.textContent = 'File changed';
     return;
   }
-  reloadTextEl.textContent = unsaved ? '檔案已在外部變更，reload 會覆蓋目前編輯' : '檔案已在外部變更';
+  reloadTextEl.textContent = unsaved ? 'File changed on disk. Reload will replace unsaved edits.' : 'File changed on disk';
   reloadNoticeEl.classList.add('show');
 }
 async function reloadActiveFile() {
   if (!activeId) return;
   const currentFile = files[activeId];
   if (!currentFile?.handle) return;
-  if (unsaved && !confirm('重新載入會覆蓋目前未儲存內容，確定要 reload 嗎？')) return;
+  if (unsaved && !confirm('Reload will replace unsaved edits. Continue?')) return;
   try {
     const diskFile = await currentFile.handle.getFile();
     currentFile.content = await diskFile.text();
@@ -849,7 +864,7 @@ function buildFileList() {
   fileListEl.innerHTML = '';
   const keys = Object.keys(files);
   if (!keys.length) {
-    fileListEl.innerHTML = '<div style="padding:14px 12px;font-size:12px;color:var(--text-muted)">尚無文件</div>';
+    fileListEl.innerHTML = '<div style="padding:14px 12px;font-size:12px;color:var(--text-muted)">No files open</div>';
     return;
   }
   keys.forEach(id => {
@@ -880,8 +895,8 @@ function deleteFile(id) {
   delete files[id];
   if (activeId === id) {
     activeId = null; editorEl.value = '';
-    previewEl.innerHTML = '<div class="empty-preview"><div class="empty-icon">✍️</div><span>開始輸入即可即時預覽</span></div>';
-    docTitleEl.textContent = '未命名文件'; wcEl.style.display = 'none';
+    previewEl.innerHTML = '<div class="empty-preview"><div class="empty-icon">✍️</div><span>Start typing to preview live</span></div>';
+    docTitleEl.textContent = 'Untitled'; wcEl.style.display = 'none';
     updateReloadNotice();
   }
   buildFileList();
@@ -892,8 +907,8 @@ function clearHistory() {
   Object.keys(files).forEach(id => delete files[id]);
   activeId = null;
   editorEl.value = '';
-  previewEl.innerHTML = '<div class="empty-preview"><div class="empty-icon">✍️</div><span>開始輸入即可即時預覽</span></div>';
-  docTitleEl.textContent = '未命名文件';
+  previewEl.innerHTML = '<div class="empty-preview"><div class="empty-icon">✍️</div><span>Start typing to preview live</span></div>';
+  docTitleEl.textContent = 'Untitled';
   wcEl.style.display = 'none';
   unsaved = false;
   udot.classList.remove('show');
@@ -904,14 +919,17 @@ function clearHistory() {
   clearPersistedHandles();
 }
 
-// ── New / Open / Save ─────────────────────────────────
-document.getElementById('new-btn').addEventListener('click', () => newFile());
-
 document.getElementById('open-btn').addEventListener('click', async () => {
   if ('showOpenFilePicker' in window) {
     try {
       const handles = await window.showOpenFilePicker({
-        types: [{ description: 'Markdown Files', accept: { 'text/markdown': ['.md', '.markdown'] } }],
+        types: [{
+          description: 'Text Files',
+          accept: {
+            'text/markdown': ['.md', '.markdown'],
+            'text/plain': ['.txt']
+          }
+        }],
         multiple: true
       });
       for (const handle of handles) {
@@ -933,7 +951,7 @@ fileInputEl.addEventListener('change', e => {
 });
 clearHistoryBtnEl.addEventListener('click', () => {
   if (!Object.keys(files).length) return;
-  if (!confirm('確定要清空開啟檔案 history 嗎？')) return;
+  if (!confirm('Clear the open file history?')) return;
   clearHistory();
 });
 
@@ -962,8 +980,14 @@ document.getElementById('save-btn').addEventListener('click', async () => {
   if ('showSaveFilePicker' in window) {
     try {
       const handle = await window.showSaveFilePicker({
-        suggestedName: f.name.endsWith('.md') ? f.name : f.name + '.md',
-        types: [{ description: 'Markdown Files', accept: { 'text/markdown': ['.md'] } }]
+        suggestedName: /\.(md|markdown|txt)$/i.test(f.name) ? f.name : f.name + '.md',
+        types: [{
+          description: 'Text Files',
+          accept: {
+            'text/markdown': ['.md', '.markdown'],
+            'text/plain': ['.txt']
+          }
+        }]
       });
       const writable = await handle.createWritable();
       await writable.write(f.content);
@@ -1052,7 +1076,7 @@ function renderPreview() {
   const md = editorEl.value;
   if (!md.trim()) {
     previewEl.className = '';
-    previewEl.innerHTML = '<div class="empty-preview"><div class="empty-icon">✍️</div><span>開始輸入即可即時預覽</span></div>';
+    previewEl.innerHTML = '<div class="empty-preview"><div class="empty-icon">✍️</div><span>Start typing to preview live</span></div>';
     return;
   }
 
@@ -1176,10 +1200,35 @@ previewEl.addEventListener('click', e => {
 document.getElementById('print-btn').addEventListener('click', () => window.print());
 
 // ── Drag & drop ───────────────────────────────────────
-document.body.addEventListener('dragover', e => e.preventDefault());
+function isSupportedTextFile(file) {
+  return /\.(md|markdown|txt)$/i.test(file.name);
+}
+function showDropOverlay() {
+  dropOverlayEl.classList.add('show');
+}
+function hideDropOverlay() {
+  dropOverlayEl.classList.remove('show');
+}
+document.body.addEventListener('dragenter', e => {
+  if (!e.dataTransfer?.types?.includes('Files')) return;
+  dragDepth += 1;
+  showDropOverlay();
+});
+document.body.addEventListener('dragover', e => {
+  if (!e.dataTransfer?.types?.includes('Files')) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+});
+document.body.addEventListener('dragleave', e => {
+  if (!e.dataTransfer?.types?.includes('Files')) return;
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) hideDropOverlay();
+});
 document.body.addEventListener('drop', e => {
   e.preventDefault();
-  const droppedFiles = Array.from(e.dataTransfer.files).filter(file => file.name.match(/\.(md|markdown)$/i));
+  dragDepth = 0;
+  hideDropOverlay();
+  const droppedFiles = Array.from(e.dataTransfer.files).filter(isSupportedTextFile);
   importFileObjects(droppedFiles);
 });
 
@@ -1260,35 +1309,33 @@ setTheme(localStorage.getItem('md-theme') || 'dark');
 // ── Init ──────────────────────────────────────────────
 async function initApp() {
   if (!await restore()) {
-    newFile('歡迎使用.md', `# 歡迎使用 MD Editor 👋
+    newFile('Welcome.md', `# Welcome to MD Editor
 
-這是一個支援 **即時預覽** 的 Markdown 編輯器，風格貼近 ChatGPT，現在也支援 **數學式顯示**！
+This is a Markdown editor with **live preview**, a ChatGPT-inspired layout, and built-in **MathJax** rendering.
 
-## 功能特色
+## Features
 
-- ✅ 左右分割編輯 / 即時預覽
-- ✅ 工具列快速插入語法
-- ✅ 多檔案管理（側欄切換）
-- ✅ 自動儲存到 LocalStorage
-- ✅ 匯入 / 匯出 \`.md\` 檔案
-- ✅ PWA 可安裝、離線使用
-- ✅ **數學式顯示（MathJax 3）**
+- Live split editor and preview
+- Toolbar shortcuts for common Markdown syntax
+- Multi-file sidebar
+- Auto-save to session state
+- Import and export \`.md\` files
+- Installable offline PWA
+- Math rendering with MathJax 3
 
-## 數學式範例
+## Math Examples
 
-### 行內數學式
+### Inline math
 
-愛因斯坦的質能方程式 $E = mc^2$ 改變了物理學。
+Einstein's mass-energy relation: $E = mc^2$
 
-黃金比例：$\\varphi = \\dfrac{1+\\sqrt{5}}{2} \\approx 1.618$
+Golden ratio: $\\varphi = \\dfrac{1+\\sqrt{5}}{2} \\approx 1.618$
 
-### 獨立（Display）數學式
+### Block math
 
 $$
 \\int_{-\\infty}^{\\infty} e^{-x^2} \\, dx = \\sqrt{\\pi}
 $$
-
-馬克士威方程式組：
 
 $$
 \\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\varepsilon_0}
@@ -1298,31 +1345,25 @@ $$
 \\nabla \\times \\mathbf{B} = \\mu_0 \\mathbf{J} + \\mu_0\\varepsilon_0 \\frac{\\partial \\mathbf{E}}{\\partial t}
 $$
 
-二次方程式解：
+## Shortcuts
 
-$$
-x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}
-$$
+| Shortcut | Action |
+|----------|--------|
+| \`Ctrl+B\` | Bold |
+| \`Ctrl+I\` | Italic |
+| \`Ctrl+S\` | Save |
+| \`Tab\` | Indent two spaces |
 
-## 快捷鍵
-
-| 快捷鍵 | 功能 |
-|--------|------|
-| \`Ctrl+B\` | 粗體 |
-| \`Ctrl+I\` | 斜體 |
-| \`Ctrl+S\` | 另存 .md |
-| \`Tab\` | 縮排兩格 |
-
-## 程式碼範例
+## Code Example
 
 \`\`\`python
 def hello(name):
     print(f"Hello, {name}!")
 
-hello("世界")
+hello("world")
 \`\`\`
 
-> 左側輸入，右側即時預覽。數學式以 \`$...$\` 行內或 \`$$...$$\` 區塊語法輸入。
+> Type on the left and preview on the right. Use \`$...$\` for inline math and \`$$...$$\` for block math.
 `);
   }
 
