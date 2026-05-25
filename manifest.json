@@ -22,7 +22,8 @@
     {
       "action": "./index.html",
       "accept": {
-        "text/markdown": [".md", ".markdown"]
+        "text/markdown": [".md", ".markdown"],
+        "text/plain": [".txt"]
       },
       "launch_type": "multiple-clients"
     }
@@ -38,7 +39,7 @@
       "files": [
         {
           "name": "files",
-          "accept": [".md", ".markdown", "text/markdown"]
+          "accept": [".md", ".markdown", ".txt", "text/markdown", "text/plain"]
         }
       ]
     }

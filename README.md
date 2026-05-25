@@ -11,9 +11,9 @@
 | **Markdown 編輯器** | 左側編輯 Markdown，右側即時預覽 |
 | **分割 / 編輯 / 預覽模式** | 可在「編輯」、「分割」、「預覽」三種模式切換 |
 | **ChatGPT 風格預覽** | 標題、段落、清單、引用、表格與程式碼區塊採用深色 ChatGPT 風格 |
-| **多檔管理** | 側欄列出已開啟的 `.md` / `.markdown` 檔，可快速切換或刪除 |
-| **新建 / 開檔 / 另存** | 可新建文件、開啟本機 Markdown 檔、另存為 `.md` |
-| **拖曳開檔** | 可直接把 `.md`、`.markdown` 拖進頁面 |
+| **多檔管理** | 側欄列出已開啟的 `.md` / `.markdown` / `.txt` 檔，可快速切換或刪除 |
+| **開檔 / 儲存** | 可開啟本機 Markdown / Text 檔，並儲存回原檔或另存 |
+| **拖曳開檔** | 可直接把 `.md`、`.markdown`、`.txt` 拖進頁面，並顯示拖曳提示 |
 | **工具列** | 可快速插入粗體、斜體、刪除線、標題、清單、待辦、引用、程式碼、連結、圖片、表格與分隔線 |
 | **程式碼高亮** | 使用 highlight.js 與 `github-dark` 主題，並提供程式碼「複製」按鈕 |
 | **字數統計** | 支援 CJK 字元與英文詞統計 |
@@ -77,10 +77,10 @@ npx serve .
 ### 編輯器內操作
 
 1. 點 `＋ 新建文件` 建立新文件。
-2. 點 `📂 開啟 Markdown 檔` 匯入 `.md` 或 `.markdown`。
-3. 可直接把 `.md` / `.markdown` 拖進頁面。
-4. 用上方工具列快速插入標題、清單、程式碼、連結、表格與數學式。
-5. 點 `💾 另存為 .md` 匯出；若瀏覽器支援 File System Access API，會直接回寫原檔。
+1. 點 `📂 Open Markdown` 匯入 `.md`、`.markdown` 或 `.txt`。
+2. 也可直接把 `.md` / `.markdown` / `.txt` 拖進頁面。
+3. 用上方工具列快速插入標題、清單、程式碼、連結、表格與數學式。
+4. 點 `💾 Save` 儲存；若瀏覽器支援 File System Access API，會直接回寫原檔。
 
 ### PWA / 檔案關聯更新
 
@@ -90,7 +90,7 @@ npx serve .
 2. 重新用 Chrome 或 Edge 開啟 `http://localhost:8080` 或 `https://MDeditor.kennylab.online`。
 3. 重新安裝 PWA。
 
-這樣作業系統與瀏覽器才會重新註冊新的檔案關聯，只保留 `.md` / `.markdown`。
+這樣作業系統與瀏覽器才會重新註冊新的檔案關聯，套用新的 `.md` / `.markdown` / `.txt` 設定。
 
 ### 多 instance 行為
 
@@ -142,9 +142,9 @@ http://localhost:8080
 
 點擊後即可安裝到桌面或主畫面。
 
-### 直接從作業系統開啟 `.md`
+### 直接從作業系統開啟文字檔
 
-在支援 `file_handlers` 的 Chromium 桌面瀏覽器中，重新安裝或更新 PWA 後，作業系統的「開啟方式 / Open with」會出現 `MD Editor`，可直接把 `.md`、`.markdown` 交給程式開啟。
+在支援 `file_handlers` 的 Chromium 桌面瀏覽器中，重新安裝或更新 PWA 後，作業系統的「開啟方式 / Open with」會出現 `MD Editor`，可直接把 `.md`、`.markdown`、`.txt` 交給程式開啟。
 
 注意：
 
@@ -348,7 +348,7 @@ LocalStorage 儲存限制：
 
 目前改用靜態檔案：
 
-- `manifest.json` 定義 PWA metadata、`.md` / `.markdown` 檔案關聯與 Web Share Target
+- `manifest.json` 定義 PWA metadata、`.md` / `.markdown` / `.txt` 檔案關聯與 Web Share Target
 - `icon.svg` 作為安裝圖示
 - `sw.js` 負責離線快取，並把 share target 傳入的內容暫存後轉交給 `index.html`
 
