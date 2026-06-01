@@ -7,7 +7,7 @@
 <meta name="description" content="Markdown Editor — ChatGPT-style live preview" />
 <!-- CSP 放寬 cdn.jsdelivr.net script (MathJax) -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self'; manifest-src 'self' blob:; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none';" />
-<title>MD Editor</title>
+<title>MDeditor: Untitled</title>
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -84,18 +84,19 @@ html,body { height:100%; font-family:var(--font-body); background:var(--bg); col
 #file-list { flex:1; overflow-y:auto; padding:6px; }
 #file-list::-webkit-scrollbar { width:3px; }
 #file-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
-.file-item { padding:7px 10px; border-radius:6px; cursor:pointer; font-size:12.5px; color:var(--text-muted); display:flex; align-items:center; gap:7px; transition:background .13s,color .13s; white-space:nowrap; overflow:hidden; }
-.file-item .fname { overflow:hidden; text-overflow:ellipsis; flex:1; }
+.file-item { padding:7px 10px; border-radius:6px; cursor:pointer; font-size:12.5px; color:var(--text-muted); display:flex; align-items:center; gap:7px; transition:background .13s,color .13s; white-space:nowrap; overflow:hidden; min-width:0; }
+.file-item .fname { overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }
 .file-item:hover { background:var(--surface); color:var(--text); }
 .file-item.active { background:var(--surface2); color:var(--text); }
 .file-item .del-btn { opacity:0; font-size:14px; color:var(--text-muted); background:none; border:none; cursor:pointer; padding:0 2px; transition:opacity .13s,color .13s; flex-shrink:0; }
 .file-item:hover .del-btn { opacity:1; }
 .file-item .del-btn:hover { color:#e06c75; }
-.sidebar-footer { padding:10px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px; }
+.sidebar-footer { padding:10px; border-top:1px solid var(--border); display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px; }
 .sb-btn { width:100%; padding:7px 10px; background:var(--surface); border:1px solid var(--border); border-radius:6px; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-body); display:flex; align-items:center; justify-content:center; gap:6px; transition:all .13s; white-space:nowrap; }
 .sb-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(16,163,127,.07); }
 .sb-btn.primary { background:rgba(16,163,127,.12); border-color:rgba(16,163,127,.35); color:var(--accent2); }
 .sb-btn.primary:hover { background:rgba(16,163,127,.22); }
+.sidebar-footer #file-input { grid-column:1 / -1; }
 
 /* Main */
 #main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
@@ -105,7 +106,8 @@ html,body { height:100%; font-family:var(--font-body); background:var(--bg); col
 .icon-btn { background:none; border:none; color:var(--text-muted); cursor:pointer; width:30px; height:30px; border-radius:6px; display:grid; place-items:center; font-size:15px; transition:background .13s,color .13s; flex-shrink:0; }
 .icon-btn:hover { background:var(--surface); color:var(--text); }
 #doc-title-wrap { flex:1; min-width:0; display:flex; align-items:center; gap:8px; }
-#doc-title { font-size:13.5px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#doc-title { font-size:13.5px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+#doc-title:hover { color:var(--accent2); }
 .unsaved-dot { width:7px; height:7px; border-radius:50%; background:var(--accent2); flex-shrink:0; display:none; }
 .unsaved-dot.show { display:block; }
 .header-right { display:flex; gap:4px; align-items:center; flex-shrink:0; }
@@ -255,6 +257,23 @@ body.theme-eink .hljs-subst, body.theme-eink .hljs-variable, body.theme-eink .hl
 .drop-overlay-title { font-size:18px; font-weight:600; margin-bottom:6px; }
 .drop-overlay-subtitle { font-size:13px; color:var(--text-muted); }
 
+.share-modal { display:none; position:fixed; inset:0; z-index:120; }
+.share-modal.show { display:block; }
+.share-modal-backdrop { position:absolute; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(2px); }
+.share-modal-panel { position:relative; width:min(720px, calc(100vw - 28px)); margin:10vh auto 0; background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow); padding:20px; display:flex; flex-direction:column; gap:14px; }
+.share-modal-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.share-modal-title { font-size:18px; font-weight:600; color:var(--text); }
+.share-modal-message { font-size:13px; line-height:1.6; color:var(--text-muted); }
+.share-modal-message.error { color:#ff9ea8; }
+.share-link-wrap { display:flex; flex-direction:column; gap:8px; }
+.share-link-label { font-size:12px; color:var(--text-muted); }
+.share-link-input { width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-family:var(--font-code); font-size:12px; }
+.share-link-input:focus { outline:1px solid var(--accent); border-color:var(--accent); }
+.share-modal-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.share-modal .sb-btn { width:auto; min-width:96px; }
+.share-modal.error .share-link-wrap,
+.share-modal.error .share-modal-actions { display:none; }
+
 /* View modes */
 #workspace.editor-only #preview-pane,
 #workspace.editor-only #divider { display:none; }
@@ -288,7 +307,7 @@ body.theme-eink .hljs-subst, body.theme-eink .hljs-variable, body.theme-eink .hl
 }
 
 @media (max-width:400px) {
-  #word-count, #print-btn { display:none !important; }
+  #word-count, #share-btn { display:none !important; }
 }
 
 @keyframes fadeSlide { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
@@ -310,6 +329,25 @@ body.theme-eink .hljs-subst, body.theme-eink .hljs-variable, body.theme-eink .hl
       <div class="drop-overlay-subtitle">Supports .md, .markdown, and .txt</div>
     </div>
   </div>
+  <div id="share-modal" class="share-modal" aria-hidden="true">
+    <div class="share-modal-backdrop" id="share-modal-backdrop"></div>
+    <div class="share-modal-panel" role="dialog" aria-modal="true" aria-labelledby="share-modal-title">
+      <div class="share-modal-header">
+        <div class="share-modal-title" id="share-modal-title">Get Sharable Link</div>
+        <button class="icon-btn" id="share-modal-close" type="button" title="Close">✕</button>
+      </div>
+      <div class="share-modal-message" id="share-modal-message">Generating bookmark-only link...</div>
+      <div class="share-link-wrap" id="share-link-wrap">
+        <label class="share-link-label" for="share-link-input">Link</label>
+        <input class="share-link-input" id="share-link-input" type="text" readonly />
+      </div>
+      <div class="share-modal-actions" id="share-modal-actions">
+        <button class="sb-btn primary" id="share-copy-btn" type="button">Copy Link</button>
+        <button class="sb-btn" id="share-open-btn" type="button">Open Link</button>
+        <button class="sb-btn" id="share-modal-dismiss" type="button">Close</button>
+      </div>
+    </div>
+  </div>
   <nav id="sidebar">
     <div class="sidebar-header">
       <div class="logo">M</div>
@@ -318,9 +356,10 @@ body.theme-eink .hljs-subst, body.theme-eink .hljs-variable, body.theme-eink .hl
     </div>
     <div id="file-list"></div>
     <div class="sidebar-footer">
-      <button class="sb-btn primary" id="open-btn">📂 Open Markdown</button>
+      <button class="sb-btn primary" id="new-file-btn">➕ New</button>
+      <button class="sb-btn primary" id="open-btn">📂 Open</button>
       <button class="sb-btn" id="save-btn">💾 Save</button>
-      <button class="sb-btn" id="clear-history-btn">🗑 Clear History</button>
+      <button class="sb-btn" id="clear-history-btn">🗑 Clear</button>
       <input type="file" id="file-input" accept=".md,.markdown,.txt,text/markdown,text/plain" multiple hidden />
     </div>
   </nav>
@@ -354,7 +393,7 @@ body.theme-eink .hljs-subst, body.theme-eink .hljs-variable, body.theme-eink .hl
           <button class="view-tab active" id="tab-split">Split</button>
           <button class="view-tab" id="tab-preview">Preview</button>
         </div>
-        <button class="icon-btn" id="print-btn" title="Print">⎙</button>
+        <button class="icon-btn" id="share-btn" title="Get Sharable Link">🔗</button>
       </div>
     </header>
 
@@ -587,10 +626,28 @@ const reloadTextEl = document.getElementById('reload-text');
 const reloadBtnEl = document.getElementById('reload-btn');
 const clearHistoryBtnEl = document.getElementById('clear-history-btn');
 const dropOverlayEl = document.getElementById('drop-overlay');
+const newFileBtnEl = document.getElementById('new-file-btn');
+const shareBtnEl = document.getElementById('share-btn');
+const shareModalEl = document.getElementById('share-modal');
+const shareModalBackdropEl = document.getElementById('share-modal-backdrop');
+const shareModalCloseEl = document.getElementById('share-modal-close');
+const shareModalDismissEl = document.getElementById('share-modal-dismiss');
+const shareModalMessageEl = document.getElementById('share-modal-message');
+const shareLinkInputEl = document.getElementById('share-link-input');
+const shareCopyBtnEl = document.getElementById('share-copy-btn');
+const shareOpenBtnEl = document.getElementById('share-open-btn');
+const shareLinkWrapEl = document.getElementById('share-link-wrap');
+const shareModalActionsEl = document.getElementById('share-modal-actions');
 
 let fileWatchTimer = null;
 let fileWatchBusy = false;
 let dragDepth = 0;
+
+const BOOKMARK_SHARE_FORMAT_VERSION = 1;
+const BOOKMARK_SHARE_FLAG_COMPRESSED = 1;
+const BOOKMARK_SHARE_URL_LIMIT = 350000;
+const bookmarkEncoder = new TextEncoder();
+const bookmarkDecoder = new TextDecoder();
 
 // ── Scroll Sync ──────────────────────────────────────
 let isSyncingEditorScroll = false;
@@ -677,6 +734,317 @@ window.addEventListener('resize', () => {
 });
 
 setView(localStorage.getItem('md-view') || 'split');
+
+// ── Bookmark share ───────────────────────────────────
+function bytesToBase64(bytes) {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+
+  if (typeof btoa === 'function') {
+    return btoa(binary);
+  }
+
+  return Buffer.from(binary, 'binary').toString('base64');
+}
+
+function base64ToBytes(input) {
+  let binary;
+  if (typeof atob === 'function') {
+    binary = atob(input);
+  } else {
+    binary = Buffer.from(input, 'base64').toString('binary');
+  }
+
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function base64UrlEncode(bytes) {
+  return bytesToBase64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function base64UrlDecode(input) {
+  let base64 = input.replace(/-/g, '+').replace(/_/g, '/');
+  while (base64.length % 4 !== 0) {
+    base64 += '=';
+  }
+  return base64ToBytes(base64);
+}
+
+function supportsGzipCompression() {
+  return typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
+}
+
+async function gzipCompress(input) {
+  const stream = new Blob([input]).stream().pipeThrough(new CompressionStream('gzip'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function gzipDecompress(input) {
+  const stream = new Blob([input]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function digestHex(input) {
+  const hash = await crypto.subtle.digest('SHA-256', bookmarkEncoder.encode(input));
+  return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function formatShareTitle(title) {
+  const trimmedTitle = title.trim() || 'Untitled';
+  const prefix = 'MD Editor · ';
+  const maxTitleLength = 60;
+
+  if (trimmedTitle.length <= maxTitleLength) {
+    return `${prefix}${trimmedTitle}`;
+  }
+
+  return `${prefix}${Array.from(trimmedTitle).slice(0, maxTitleLength - 1).join('')}…`;
+}
+
+function updateDocumentTitle() {
+  const currentName = (docTitleEl.textContent || 'Untitled').trim() || 'Untitled';
+  document.title = `MDeditor: ${currentName}`;
+}
+
+function renameActiveFile() {
+  if (!activeId || !files[activeId]) return;
+  const currentFile = files[activeId];
+  const nextName = prompt('Rename file', currentFile.name);
+  if (nextName === null) return;
+  const trimmedName = nextName.trim();
+  if (!trimmedName) return;
+  currentFile.name = trimmedName;
+  docTitleEl.textContent = trimmedName;
+  updateDocumentTitle();
+  buildFileList();
+  persist();
+}
+
+function syncActiveFileContent() {
+  if (activeId && files[activeId]) {
+    files[activeId].content = editorEl.value;
+  }
+}
+
+function getShareableWorkspaceState() {
+  syncActiveFileContent();
+  const fileIds = Object.keys(files);
+  const activeIndex = activeId ? fileIds.indexOf(activeId) : -1;
+
+  return {
+    version: 1,
+    title: docTitleEl.textContent || 'Untitled',
+    theme: themeSelect.value,
+    fontSize: fontSizeSelect.value,
+    view: workspace.className === 'editor-only' ? 'edit' : workspace.className === 'preview-only' ? 'preview' : 'split',
+    activeIndex,
+    files: fileIds.map(id => ({
+      name: files[id].name,
+      content: files[id].content
+    }))
+  };
+}
+
+async function createBookmarkShareFragment() {
+  const body = getShareableWorkspaceState();
+  const checksum = await digestHex(JSON.stringify(body));
+  const packet = JSON.stringify({ ...body, checksum });
+  const rawBytes = bookmarkEncoder.encode(packet);
+  const compressedBytes = supportsGzipCompression() ? await gzipCompress(rawBytes) : null;
+  const useCompressed = Boolean(compressedBytes && compressedBytes.length < rawBytes.length);
+  const payloadBytes = useCompressed ? compressedBytes : rawBytes;
+  const packetBytes = new Uint8Array(payloadBytes.length + 2);
+  packetBytes[0] = BOOKMARK_SHARE_FORMAT_VERSION;
+  packetBytes[1] = useCompressed ? BOOKMARK_SHARE_FLAG_COMPRESSED : 0;
+  packetBytes.set(payloadBytes, 2);
+
+  return base64UrlEncode(packetBytes);
+}
+
+async function createBookmarkShareUrl() {
+  const fragment = await createBookmarkShareFragment();
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.hash = fragment;
+
+  if (url.toString().length > BOOKMARK_SHARE_URL_LIMIT) {
+    throw new Error('Share link is too large.');
+  }
+
+  return { url: url.toString(), title: formatShareTitle(docTitleEl.textContent || 'Untitled') };
+}
+
+async function decodeBookmarkShareFragment(fragment) {
+  const rawFragment = fragment.startsWith('#') ? fragment.slice(1) : fragment;
+  if (!rawFragment) {
+    throw new Error('Invalid bookmark share link.');
+  }
+
+  const packetBytes = base64UrlDecode(rawFragment);
+  if (packetBytes.length < 2) {
+    throw new Error('Invalid bookmark share link.');
+  }
+
+  const formatVersion = packetBytes[0];
+  const flags = packetBytes[1];
+  if (formatVersion !== BOOKMARK_SHARE_FORMAT_VERSION) {
+    throw new Error('Unsupported bookmark share link.');
+  }
+
+  const payloadBytes = packetBytes.slice(2);
+  const rawBytes = flags & BOOKMARK_SHARE_FLAG_COMPRESSED
+    ? await gzipDecompress(payloadBytes)
+    : payloadBytes;
+
+  const body = JSON.parse(bookmarkDecoder.decode(rawBytes));
+  const { checksum, ...withoutChecksum } = body;
+  const expectedChecksum = await digestHex(JSON.stringify(withoutChecksum));
+
+  if (checksum !== expectedChecksum) {
+    throw new Error('Bookmark share link checksum mismatch.');
+  }
+
+  return body;
+}
+
+function closeShareModal() {
+  shareModalEl.classList.remove('show', 'error');
+  shareModalEl.setAttribute('aria-hidden', 'true');
+  shareLinkInputEl.value = '';
+  shareModalMessageEl.textContent = '';
+  shareModalMessageEl.classList.remove('error');
+  shareLinkWrapEl.style.display = '';
+  shareModalActionsEl.style.display = '';
+  shareOpenBtnEl.onclick = null;
+  shareCopyBtnEl.onclick = null;
+  shareCopyBtnEl.textContent = 'Copy Link';
+}
+
+function openShareModal() {
+  shareModalEl.classList.add('show');
+  shareModalEl.setAttribute('aria-hidden', 'false');
+}
+
+function showShareSuccess(url) {
+  shareModalEl.classList.remove('error');
+  shareModalMessageEl.classList.remove('error');
+  shareModalMessageEl.textContent = 'Bookmark-only link generated. Copy or open the link below.';
+  shareLinkInputEl.value = url;
+  shareCopyBtnEl.textContent = 'Copy Link';
+  shareLinkWrapEl.style.display = '';
+  shareModalActionsEl.style.display = '';
+  shareOpenBtnEl.onclick = () => window.open(url, '_blank', 'noopener,noreferrer');
+  shareCopyBtnEl.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      shareCopyBtnEl.textContent = 'Copied';
+      setTimeout(() => { shareCopyBtnEl.textContent = 'Copy Link'; }, 1500);
+    } catch (error) {
+      console.error('Copy link failed', error);
+    }
+  };
+  openShareModal();
+  requestAnimationFrame(() => {
+    shareLinkInputEl.focus();
+    shareLinkInputEl.select();
+  });
+}
+
+function showShareFailure(message) {
+  shareModalEl.classList.add('error');
+  shareModalMessageEl.classList.add('error');
+  shareModalMessageEl.textContent = message;
+  shareLinkInputEl.value = '';
+  shareLinkWrapEl.style.display = 'none';
+  shareModalActionsEl.style.display = 'none';
+  openShareModal();
+}
+
+async function handleGetSharableLink() {
+  try {
+    const share = await createBookmarkShareUrl();
+    if (window.location.href !== share.url) {
+      history.pushState(null, '', share.url);
+    }
+    showShareSuccess(share.url);
+  } catch (error) {
+    console.log('Error generating bookmark share link:', error);
+    showShareFailure('Failed to generate bookmark-only link.');
+  }
+}
+
+async function loadBookmarkShareFromLocation() {
+  if (!window.location.hash) {
+    return false;
+  }
+
+  const payload = await decodeBookmarkShareFragment(window.location.hash);
+  clearHistory();
+
+  const filesPayload = Array.isArray(payload.files) ? payload.files : [];
+  const createdIds = [];
+
+  filesPayload.forEach(file => {
+    const id = 'f' + (++idCounter);
+    files[id] = {
+      name: file?.name || 'Untitled.md',
+      content: file?.content || '',
+      handle: null,
+      sourceKey: null,
+      lastModified: null,
+      size: null,
+      externallyModified: false
+    };
+    createdIds.push(id);
+  });
+
+  buildFileList();
+
+  if (createdIds.length) {
+    const activeIndex = Number.isInteger(payload.activeIndex) ? payload.activeIndex : -1;
+    const targetId = createdIds[activeIndex >= 0 && activeIndex < createdIds.length ? activeIndex : 0];
+    activateFile(targetId);
+  } else {
+    editorEl.value = '';
+    previewEl.innerHTML = '<div class="empty-preview"><div class="empty-icon">✍️</div><span>Start typing to preview live</span></div>';
+    docTitleEl.textContent = 'Untitled';
+    updateDocumentTitle();
+    wcEl.style.display = 'none';
+    updateReloadNotice();
+  }
+
+  if (payload.theme) {
+    setTheme(payload.theme);
+  }
+  if (payload.fontSize) {
+    applyFontScale(payload.fontSize);
+  }
+  if (payload.view) {
+    setView(payload.view);
+  }
+
+  unsaved = false;
+  udot.classList.remove('show');
+  persist();
+  return true;
+}
+
+shareBtnEl.addEventListener('click', handleGetSharableLink);
+shareModalBackdropEl.addEventListener('click', closeShareModal);
+shareModalCloseEl.addEventListener('click', closeShareModal);
+shareModalDismissEl.addEventListener('click', closeShareModal);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && shareModalEl.classList.contains('show')) {
+    closeShareModal();
+  }
+});
 
 // ── Divider drag ──────────────────────────────────────
 const divider    = document.getElementById('divider');
@@ -872,6 +1240,8 @@ function buildFileList() {
     const el = document.createElement('div');
     el.className = 'file-item' + (id === activeId ? ' active' : '');
     el.innerHTML = `<span style="font-size:12px;opacity:.5">📄</span><span class="fname">${esc(f.name)}</span><button class="del-btn">✕</button>`;
+    el.title = f.name;
+    el.querySelector('.fname').title = f.name;
     el.querySelector('.fname').addEventListener('click', () => activateFile(id));
     el.querySelector('.del-btn').addEventListener('click', e => { e.stopPropagation(); deleteFile(id); });
     fileListEl.appendChild(el);
@@ -882,6 +1252,7 @@ function activateFile(id) {
   activeId = id;
   editorEl.value = files[id].content;
   docTitleEl.textContent = files[id].name;
+  updateDocumentTitle();
   unsaved = false; udot.classList.remove('show');
   buildFileList();
   renderPreview();
@@ -897,6 +1268,7 @@ function deleteFile(id) {
     activeId = null; editorEl.value = '';
     previewEl.innerHTML = '<div class="empty-preview"><div class="empty-icon">✍️</div><span>Start typing to preview live</span></div>';
     docTitleEl.textContent = 'Untitled'; wcEl.style.display = 'none';
+    updateDocumentTitle();
     updateReloadNotice();
   }
   buildFileList();
@@ -909,6 +1281,7 @@ function clearHistory() {
   editorEl.value = '';
   previewEl.innerHTML = '<div class="empty-preview"><div class="empty-icon">✍️</div><span>Start typing to preview live</span></div>';
   docTitleEl.textContent = 'Untitled';
+  updateDocumentTitle();
   wcEl.style.display = 'none';
   unsaved = false;
   udot.classList.remove('show');
@@ -945,6 +1318,10 @@ document.getElementById('open-btn').addEventListener('click', async () => {
   }
 });
 
+newFileBtnEl.addEventListener('click', () => {
+  newFile('Untitled.md', '');
+});
+
 fileInputEl.addEventListener('change', e => {
   importFileObjects(Array.from(e.target.files));
   e.target.value = '';
@@ -960,23 +1337,7 @@ document.getElementById('save-btn').addEventListener('click', async () => {
   const f = files[activeId];
   f.content = editorEl.value;
 
-  // 如果有檔案控制句柄 (Chrome/Edge)，直接存檔
-  if (f.handle) {
-    try {
-      const writable = await f.handle.createWritable();
-      await writable.write(f.content);
-      await writable.close();
-      updateFileSnapshot(f, await f.handle.getFile());
-      persistHandleForFile(activeId);
-      unsaved = false; udot.classList.remove('show');
-      updateReloadNotice();
-      return;
-    } catch (err) {
-      console.error('直接存檔失敗，改用下載方式', err);
-    }
-  }
-
-  // 備案：如果支援 showSaveFilePicker
+  // 永遠走 Save As
   if ('showSaveFilePicker' in window) {
     try {
       const handle = await window.showSaveFilePicker({
@@ -997,6 +1358,7 @@ document.getElementById('save-btn').addEventListener('click', async () => {
       updateFileSnapshot(f, await handle.getFile());
       persistHandleForFile(activeId);
       docTitleEl.textContent = f.name;
+      updateDocumentTitle();
       buildFileList();
       unsaved = false; udot.classList.remove('show');
       updateReloadNotice();
@@ -1196,9 +1558,6 @@ previewEl.addEventListener('click', e => {
   if (btn) copyCode(btn);
 });
 
-// ── Print ─────────────────────────────────────────────
-document.getElementById('print-btn').addEventListener('click', () => window.print());
-
 // ── Drag & drop ───────────────────────────────────────
 function isSupportedTextFile(file) {
   return /\.(md|markdown|txt)$/i.test(file.name);
@@ -1305,9 +1664,21 @@ function setTheme(theme) {
 }
 themeSelect.addEventListener('change', e => setTheme(e.target.value));
 setTheme(localStorage.getItem('md-theme') || 'dark');
+docTitleEl.addEventListener('click', renameActiveFile);
+updateDocumentTitle();
 
 // ── Init ──────────────────────────────────────────────
 async function initApp() {
+  try {
+    if (await loadBookmarkShareFromLocation()) {
+      return;
+    }
+  } catch (err) {
+    console.error('載入 bookmark 分享失敗', err);
+    showShareFailure('Failed to load bookmark-only link.');
+    return;
+  }
+
   if (!await restore()) {
     newFile('Welcome.md', `# Welcome to MD Editor
 
