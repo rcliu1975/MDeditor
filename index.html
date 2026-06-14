@@ -343,7 +343,6 @@ body.theme-eink .hljs-subst, body.theme-eink .hljs-variable, body.theme-eink .hl
       </div>
       <div class="share-modal-actions" id="share-modal-actions">
         <button class="sb-btn primary" id="share-copy-btn" type="button">Copy Link</button>
-        <button class="sb-btn" id="share-open-btn" type="button">Open Link</button>
         <button class="sb-btn" id="share-modal-dismiss" type="button">Close</button>
       </div>
     </div>
@@ -635,7 +634,6 @@ const shareModalDismissEl = document.getElementById('share-modal-dismiss');
 const shareModalMessageEl = document.getElementById('share-modal-message');
 const shareLinkInputEl = document.getElementById('share-link-input');
 const shareCopyBtnEl = document.getElementById('share-copy-btn');
-const shareOpenBtnEl = document.getElementById('share-open-btn');
 const shareLinkWrapEl = document.getElementById('share-link-wrap');
 const shareModalActionsEl = document.getElementById('share-modal-actions');
 
@@ -922,7 +920,6 @@ function closeShareModal() {
   shareModalMessageEl.classList.remove('error');
   shareLinkWrapEl.style.display = '';
   shareModalActionsEl.style.display = '';
-  shareOpenBtnEl.onclick = null;
   shareCopyBtnEl.onclick = null;
   shareCopyBtnEl.textContent = 'Copy Link';
 }
@@ -935,12 +932,11 @@ function openShareModal() {
 function showShareSuccess(url) {
   shareModalEl.classList.remove('error');
   shareModalMessageEl.classList.remove('error');
-  shareModalMessageEl.textContent = 'Bookmark-only link generated. Copy or open the link below.';
+  shareModalMessageEl.textContent = 'Bookmark-only link generated. Copy the link below.';
   shareLinkInputEl.value = url;
   shareCopyBtnEl.textContent = 'Copy Link';
   shareLinkWrapEl.style.display = '';
   shareModalActionsEl.style.display = '';
-  shareOpenBtnEl.onclick = () => window.open(url, '_blank', 'noopener,noreferrer');
   shareCopyBtnEl.onclick = async () => {
     try {
       await navigator.clipboard.writeText(url);
@@ -957,6 +953,11 @@ function showShareSuccess(url) {
   });
 }
 
+function setShareModalMessage(message, isError = false) {
+  shareModalMessageEl.classList.toggle('error', isError);
+  shareModalMessageEl.textContent = message;
+}
+
 function showShareFailure(message) {
   shareModalEl.classList.add('error');
   shareModalMessageEl.classList.add('error');
@@ -965,6 +966,41 @@ function showShareFailure(message) {
   shareLinkWrapEl.style.display = 'none';
   shareModalActionsEl.style.display = 'none';
   openShareModal();
+}
+
+function hasFileDragData(event) {
+  const types = event.dataTransfer?.types;
+  if (!types) return false;
+  if (typeof types.contains === 'function') return types.contains('Files');
+  return Array.from(types).includes('Files');
+}
+
+async function createRawFileShareUrl(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const fragment = base64UrlEncode(bytes);
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.hash = fragment;
+
+  if (url.toString().length > BOOKMARK_SHARE_URL_LIMIT) {
+    throw new Error('Dropped file is too large.');
+  }
+
+  return url.toString();
+}
+
+async function handleShareModalFileDrop(fileObjects) {
+  const file = fileObjects?.[0];
+  if (!file) return;
+
+  try {
+    const url = await createRawFileShareUrl(file);
+    history.replaceState(null, '', url);
+    setShareModalMessage(`Bookmark-only link updated from ${file.name || 'the dropped file'}.`);
+  } catch (error) {
+    console.error('Error generating raw file share link:', error);
+    setShareModalMessage('Failed to update the address bar from the dropped file.', true);
+  }
 }
 
 async function handleGetSharableLink() {
@@ -1040,6 +1076,23 @@ shareBtnEl.addEventListener('click', handleGetSharableLink);
 shareModalBackdropEl.addEventListener('click', closeShareModal);
 shareModalCloseEl.addEventListener('click', closeShareModal);
 shareModalDismissEl.addEventListener('click', closeShareModal);
+shareModalEl.addEventListener('dragenter', e => {
+  if (!hasFileDragData(e)) return;
+  e.preventDefault();
+  e.stopPropagation();
+});
+shareModalEl.addEventListener('dragover', e => {
+  if (!hasFileDragData(e)) return;
+  e.preventDefault();
+  e.stopPropagation();
+  e.dataTransfer.dropEffect = 'copy';
+});
+shareModalEl.addEventListener('drop', e => {
+  if (!e.dataTransfer?.files?.length) return;
+  e.preventDefault();
+  e.stopPropagation();
+  handleShareModalFileDrop(Array.from(e.dataTransfer.files));
+});
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && shareModalEl.classList.contains('show')) {
     closeShareModal();
