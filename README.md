@@ -190,6 +190,12 @@ ngrok 也可以把本機 `http://localhost:8080` 轉成公開 HTTPS 網址，符
 D:\bin_prog\ngrok.exe
 ```
 
+或在 Linux 安裝
+
+```bash
+sudo snap install ngrok
+```
+
 3. 設定 authtoken：
 
 ```bat
@@ -209,8 +215,8 @@ python -m http.server 8080
 
 #### 視窗 2：啟動 ngrok tunnel
 
-```bat
-D:\bin_prog\ngrok http 8080
+```bash
+ngrok http 8080
 ```
 
 ngrok 會產生一個 HTTPS 網址，例如：
