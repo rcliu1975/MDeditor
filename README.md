@@ -177,35 +177,6 @@ http://localhost:8080
 
 ---
 
-## 推薦方式：Cloudflare Tunnel
-
-推薦優先使用 Cloudflare Tunnel。它不一定需要登入帳號即可快速產生 HTTPS tunnel，免費、穩定，也比 ngrok 少一些憑證與網路限制問題。
-
-### 啟動流程
-
-開兩個命令列視窗。
-
-#### 視窗 1：啟動本機 server
-
-```bat
-cd /d C:\你的專案資料夾
-python -m http.server 8080
-```
-
-#### 視窗 2：啟動 Cloudflare Tunnel
-
-```bat
-cloudflared tunnel --url http://localhost:8080
-```
-
-Cloudflare Tunnel 會產生一個 HTTPS 網址，例如：
-
-```text
-https://example.trycloudflare.com
-```
-
-用手機或其他電腦開啟這個 HTTPS 網址，就可以測試並安裝 PWA。
-
 ## 使用 ngrok
 
 ngrok 也可以把本機 `http://localhost:8080` 轉成公開 HTTPS 網址，符合 PWA 安裝條件。
