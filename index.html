@@ -8,6 +8,8 @@
 <!-- CSP 放寬 cdn.jsdelivr.net script (MathJax) -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self'; manifest-src 'self' blob:; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none';" />
 <title>MDeditor: Untitled</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml" sizes="any" />
+<link rel="shortcut icon" href="icon.svg" type="image/svg+xml" />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -410,6 +412,7 @@ body.theme-eink .hljs-subst, body.theme-eink .hljs-variable, body.theme-eink .hl
         <span class="unsaved-dot" id="unsaved-dot"></span>
       </div>
       <div class="header-right">
+        <button type="button" id="reload-btn" class="icon-btn" title="Reload" aria-label="Reload">↻</button>
         <div class="reload-notice" id="reload-notice">
           <span id="reload-text">File changed</span>
         </div>
@@ -684,6 +687,7 @@ const shareModalActionsEl = document.getElementById('share-modal-actions');
 
 let fileWatchTimer = null;
 let fileWatchBusy = false;
+let reloadNoticeTimer = null;
 let dragDepth = 0;
 
 const BOOKMARK_SHARE_FORMAT_VERSION = 1;
@@ -1276,6 +1280,8 @@ function updateReloadButtonState() {
   reloadBtnEl.classList.toggle('dirty', !!activeFile?.externallyModified);
 }
 function updateReloadNotice() {
+  clearTimeout(reloadNoticeTimer);
+  reloadNoticeTimer = null;
   const activeFile = activeId ? files[activeId] : null;
   if (!activeFile?.externallyModified) {
     reloadNoticeEl.classList.remove('show');
@@ -1287,11 +1293,21 @@ function updateReloadNotice() {
   reloadNoticeEl.classList.add('show');
   updateReloadButtonState();
 }
+function showReloadHint(message) {
+  clearTimeout(reloadNoticeTimer);
+  reloadTextEl.textContent = message;
+  reloadNoticeEl.classList.add('show');
+  reloadNoticeTimer = setTimeout(() => {
+    reloadNoticeEl.classList.remove('show');
+    reloadTextEl.textContent = 'File changed';
+    reloadNoticeTimer = null;
+  }, 2400);
+}
 async function reloadActiveFile() {
   if (!activeId) return;
   const currentFile = files[activeId];
   if (!currentFile?.handle) {
-    alert('This file does not have a disk handle, so it cannot be reloaded. Open it with the Open button to enable reload.');
+    showReloadHint('Open the file with Open to enable reload.');
     return;
   }
   if (unsaved && !confirm('Reload will replace unsaved edits. Continue?')) return;
