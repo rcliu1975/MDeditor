@@ -980,8 +980,9 @@ function openShareModal() {
 
 function showShareSuccess(url) {
   shareModalEl.classList.remove('error');
-  shareModalMessageEl.classList.remove('error');
-  shareModalMessageEl.textContent = 'Bookmark-only link generated. Copy the link below.';
+  //shareModalMessageEl.classList.remove('error');
+  //shareModalMessageEl.textContent = 'Bookmark-only link generated. Copy the link below.';
+  setShareModalMessage(`Bookmark-only link generated. Copy the link below. (URL length：${url.length} )`);
   shareLinkInputEl.value = url;
   shareCopyBtnEl.textContent = 'Copy Link';
   shareLinkWrapEl.style.display = '';
@@ -1045,7 +1046,7 @@ async function handleShareModalFileDrop(fileObjects) {
   try {
     const url = await createRawFileShareUrl(file);
     history.replaceState(null, '', url);
-    setShareModalMessage(`Bookmark-only link updated from ${file.name || 'the dropped file'}.`);
+    setShareModalMessage(`Bookmark-only link updated from ${file.name || 'the dropped file'}. (URL length：${url.length} )`);
   } catch (error) {
     console.error('Error generating raw file share link:', error);
     setShareModalMessage('Failed to update the address bar from the dropped file.', true);
