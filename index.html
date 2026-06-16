@@ -1046,6 +1046,7 @@ async function handleShareModalFileDrop(fileObjects) {
   try {
     const url = await createRawFileShareUrl(file);
     history.replaceState(null, '', url);
+    document.title = `${document.title.split(' ·')[0]} · ${new Date().toLocaleString()}`;
     //setShareModalMessage(`Bookmark-only link updated from ${file.name || 'the dropped file'}. (URL length：${url.length} )`);
     showShareSuccess(url);
   } catch (error) {
@@ -1061,6 +1062,7 @@ async function handleGetSharableLink() {
       history.pushState(null, '', share.url);
     }
     showShareSuccess(share.url);
+    document.title = `${share.title} · ${new Date().toLocaleString()}`;
   } catch (error) {
     console.log('Error generating bookmark share link:', error);
     showShareFailure('Failed to generate bookmark-only link.');
