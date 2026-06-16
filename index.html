@@ -1046,7 +1046,8 @@ async function handleShareModalFileDrop(fileObjects) {
   try {
     const url = await createRawFileShareUrl(file);
     history.replaceState(null, '', url);
-    setShareModalMessage(`Bookmark-only link updated from ${file.name || 'the dropped file'}. (URL length：${url.length} )`);
+    //setShareModalMessage(`Bookmark-only link updated from ${file.name || 'the dropped file'}. (URL length：${url.length} )`);
+    showShareSuccess(url);
   } catch (error) {
     console.error('Error generating raw file share link:', error);
     setShareModalMessage('Failed to update the address bar from the dropped file.', true);
