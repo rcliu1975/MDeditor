@@ -100,12 +100,18 @@ npx serve .
 
 ### systemd user mode 操作
 
-第一次安裝：
+如果你想用腳本管理：
 
 ```bash
 cd MDeditor
 chmod +x scripts/mdeditor-serve.sh scripts/mdeditor-systemd-user.sh
 ./scripts/mdeditor-systemd-user.sh install
+```
+
+移除：
+
+```bash
+./scripts/mdeditor-systemd-user.sh uninstall
 ```
 
 日常管理：
@@ -123,6 +129,54 @@ chmod +x scripts/mdeditor-serve.sh scripts/mdeditor-systemd-user.sh
 ```bash
 ./scripts/mdeditor-systemd-user.sh route-dns
 ```
+
+如果你不想使用 script，也可以直接手動安裝 `systemd --user`。
+
+### 手動安裝 systemd user mode
+
+1. 複製 unit 檔到 user systemd 目錄：
+
+```bash
+mkdir -p ~/.config/systemd/user
+cp systemd/user/mdeditor-http.service ~/.config/systemd/user/
+cp systemd/user/mdeditor.target ~/.config/systemd/user/
+```
+
+2. 重新載入 user systemd，並啟用服務：
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now mdeditor.target
+```
+
+3. 確認狀態：
+
+```bash
+systemctl --user status mdeditor.target mdeditor-http.service
+```
+
+### 手動移除 systemd user mode
+
+1. 停用並停止服務：
+
+```bash
+systemctl --user disable --now mdeditor.target mdeditor-http.service
+```
+
+2. 刪除 user systemd unit 檔：
+
+```bash
+rm -f ~/.config/systemd/user/mdeditor.target
+rm -f ~/.config/systemd/user/mdeditor-http.service
+```
+
+3. 重新載入 user systemd：
+
+```bash
+systemctl --user daemon-reload
+```
+
+如果你有另外建立自己的 `mdeditor-cloudflared.service`，也請一併刪除對應檔案並執行 `systemctl --user daemon-reload`。
 
 ---
 
